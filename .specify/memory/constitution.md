@@ -1,9 +1,9 @@
 <!--
 Sync Impact Report
-- Version change: 1.1.0 -> 1.2.0
-- Modified principles: None
-- Added sections: None
-- Modified constraints: Authentication options; phone OTP deferred unless cost-effective
+- Version change: 1.3.0 -> 1.4.0
+- Modified principles: VI. Offline-First; scoped exception also clarifies I and IV
+- Added sections: Approved local-only feature exception
+- Modified constraints: None
 - Removed sections: None
 - Follow-up TODOs: None
 -->
@@ -21,6 +21,8 @@ This constitution exists to prevent unclear ownership between client and server 
 The mobile application MUST prioritize intuitive navigation, predictable behavior, low cognitive load, and clear primary actions for shopkeepers and users with limited literacy or digital experience. UI text MUST be short, familiar, and consistent, and screens MUST provide obvious loading, success, empty, error, offline, and destructive-action states. Components MUST be reusable, accessible, and focused on presentation and interaction without duplicating backend validation or business rules.
 
 The product MUST be usable without requiring technical understanding. Large touch targets, simple layouts, readable typography, and clear icon labels are mandatory, and accessibility requirements such as screen-reader labels, logical focus order, contrast, and text scaling MUST be built into the experience from the first release.
+
+UI components MUST be composed from small, reusable units when those units represent repeated or independently understandable behavior. Shared components MUST have clear responsibilities and MUST NOT become generic abstractions without a demonstrated reuse need. TypeScript and TSX files MUST NOT contain CSS rules, `StyleSheet` declarations, or inline style objects; styling definitions MUST live in dedicated style files, while component files may reference approved classes or imported styles. Implementations MUST account for loading, empty, invalid-input, failure, and recovery states rather than validating only the happy path.
 
 ### III. Internationalization by Default: Arabic and French
 Arabic and French MUST both be supported from initial release. Every user-facing string MUST be stored in JSON translation resources, and user-visible text MUST never be hardcoded in components, hooks, services, validation logic, or API error handling. The application MUST persist the active language selection and restore it on future launches, and switching between Arabic and French MUST work without reinstalling the app.
@@ -42,6 +44,10 @@ Core shopkeeper actions—adding a customer, recording a debt, recording a payme
 
 Offline-first behavior preserves continuity of essential shop work when connectivity is unavailable, while server-side reconciliation protects shared data integrity and access control.
 
+#### Approved Local-Only Feature Exception
+
+The approved `001-kridi-credit-ledger` initial release is a single-shop, single-device offline ledger. For this feature only, its approved scope supersedes the server/API and authentication requirements in Principles I and IV and the synchronization/reconciliation requirements in this principle. Ledger records and pending operations remain on the device and MUST NOT be uploaded or synchronized. Any future multi-user access, shared data, or reconciliation requires a separately approved feature specification and security design; this exception does not apply to other features.
+
 ## Additional Constraints
 
 - The mobile application MUST use React Native and Expo as the standard development and build platform.
@@ -57,6 +63,7 @@ Offline-first behavior preserves continuity of essential shop work when connecti
 - Kridi customer data, including names, phone numbers, and debts, is private to the shop and MUST NEVER be included in aggregated, shared, or analytics datasets. Any future data sharing MUST be anonymized, aggregated, and based on explicit opt-in consent.
 - Authentication MUST support phone number plus PIN and Google login through Laravel Sanctum. Phone-number OTP MAY be added when its operating cost is viable; it is not required for the initial release. Email/password authentication MUST NOT be used.
 - Common shopkeeper actions MUST take three taps or fewer.
+- CSS and style declarations MUST be kept in dedicated styling files, separate from TypeScript and TSX component logic. UI work MUST favor clean, reusable components and MUST cover relevant non-happy-path states.
 - Sensitive configuration MUST be excluded from version control and secure handling MUST be used for tokens, credentials, and environment settings.
 - Documentation and architectural decisions MUST be updated when a feature introduces material changes in contracts, permissions, or system boundaries.
 
@@ -79,4 +86,4 @@ Amendments MUST be documented in the constitution, versioned using semantic vers
 
 All work in the repository MUST be checked against this constitution during planning, implementation, and review. If a feature violates a mandatory requirement, the work MUST be corrected before it is considered complete. Maintainers MUST preserve a durable architectural record of significant decisions and deviations that are intentionally allowed.
 
-**Version**: 1.2.0 | **Ratified**: 2026-10-10 | **Last Amended**: 2026-10-10
+**Version**: 1.4.0 | **Ratified**: 2026-10-10 | **Last Amended**: 2026-10-11
