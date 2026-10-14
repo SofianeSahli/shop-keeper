@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { getLedgerErrorMessage } from '@/i18n/errorMessages';
-import { refreshCompleted } from '../store/ledgerSlice';
+import { clearFormDirty, refreshCompleted, setFormDirty } from '../store/ledgerSlice';
 import { createProduct, findProductByBarcode, listProducts } from '../services/productService';
-import { listCustomers } from '../services/customerService';
+import { createCustomer, listCustomers } from '../services/customerService';
 import {
   addTicketDraftItem,
   calculateTicketTotal,
@@ -50,9 +50,16 @@ function TicketForm({ id }: { id?: string }) {
       };
     }
   });
-  const [customers] = useState<Customer[]>(initial.customers);
+  const [customers, setCustomers] = useState<Customer[]>(initial.customers);
   const [products, setProducts] = useState<Product[]>(initial.products);
   const [customerId, setCustomerId] = useState(initial.ticket?.customerId ?? initial.customers[0]?.id ?? '');
+  const [showInlineCustomer, setShowInlineCustomer] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerRealName, setNewCustomerRealName] = useState('');
+  const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [showInlineProduct, setShowInlineProduct] = useState(false);
+  const [newProductName, setNewProductName] = useState('');
+  const [newProductPrice, setNewProductPrice] = useState('');
   const [items, setItems] = useState<TicketDraftItem[]>(
     initial.ticket?.lines.map((line) => ({
       id: line.id,
@@ -68,6 +75,27 @@ function TicketForm({ id }: { id?: string }) {
   const [quickProductName, setQuickProductName] = useState('');
   const [quickProductPrice, setQuickProductPrice] = useState('');
   const [error, setError] = useState(initial.error);
+
+  useEffect(() => {
+    const hasChanges =
+      customerId !== (initial.ticket?.customerId ?? initial.customers[0]?.id ?? '') ||
+      items.length !== (initial.ticket?.lines.length ?? 0) ||
+      items.some((item, index) => {
+        const original = initial.ticket?.lines[index];
+        return !original ||
+          item.productId !== original.productId ||
+          item.quantity !== original.quantity ||
+          item.unitPriceMillimes !== original.unitPriceMillimes ||
+          item.productName !== original.productNameSnapshot;
+      });
+    dispatch(setFormDirty({ section: 'tickets', isDirty: hasChanges && !error }));
+  }, [customerId, dispatch, error, initial.customers, initial.ticket, items]);
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearFormDirty());
+    };
+  }, [dispatch]);
 
   function addProduct(product: Product): void {
     try {
@@ -119,6 +147,43 @@ function TicketForm({ id }: { id?: string }) {
     }
   }
 
+  function saveInlineCustomer(): void {
+    try {
+      const created = createCustomer({
+        displayLabel: newCustomerName.trim(),
+        realName: newCustomerRealName.trim() || null,
+        phoneNumber: newCustomerPhone.trim() || null,
+      });
+      setCustomers((current) => [...current, created]);
+      setCustomerId(created.id);
+      setShowInlineCustomer(false);
+      setNewCustomerName('');
+      setNewCustomerRealName('');
+      setNewCustomerPhone('');
+      setError('');
+    } catch (cause) {
+      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
+    }
+  }
+
+  function saveInlineProduct(): void {
+    try {
+      const product = createProduct({
+        name: newProductName.trim(),
+        barcode: null,
+        sellingPriceMillimes: parseMillimes(newProductPrice),
+      });
+      setProducts((current) => [...current, product]);
+      addProduct(product);
+      setShowInlineProduct(false);
+      setNewProductName('');
+      setNewProductPrice('');
+      setError('');
+    } catch (cause) {
+      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
+    }
+  }
+
   function save(): void {
     try {
       if (!customerId) throw new Error(t.chooseCustomer);
@@ -130,6 +195,7 @@ function TicketForm({ id }: { id?: string }) {
       } else {
         ticketRepository.createTicket(buildTicketFromDraft(customerId, items));
       }
+      dispatch(clearFormDirty());
       dispatch(refreshCompleted());
       router.replace('/ledger/tickets');
     } catch (cause) {
@@ -156,6 +222,36 @@ function TicketForm({ id }: { id?: string }) {
           </Pressable>
         ))}
         {customers.length === 0 ? <FeedbackState kind="empty" message={t.emptyCustomers} /> : null}
+        <Pressable
+          accessibilityRole="button"
+          className="ledger-touch-target rounded-xl border border-blue-300 px-4 py-3"
+          onPress={() => setShowInlineCustomer((current) => !current)}
+        >
+          <Text className="text-center font-semibold text-blue-800">{t.newCustomer}</Text>
+        </Pressable>
+        {showInlineCustomer ? (
+          <View className="gap-3 rounded-xl bg-white p-4">
+            <LedgerField
+              label={t.displayLabel}
+              value={newCustomerName}
+              onChangeText={setNewCustomerName}
+            />
+            <LedgerField
+              label={t.realName}
+              value={newCustomerRealName}
+              onChangeText={setNewCustomerRealName}
+            />
+            <LedgerField
+              label={t.phoneNumber}
+              value={newCustomerPhone}
+              onChangeText={setNewCustomerPhone}
+              keyboardType="phone-pad"
+            />
+            <Pressable accessibilityRole="button" className="ledger-primary-button" onPress={saveInlineCustomer}>
+              <Text className="font-semibold text-white">{t.save}</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
       <BarcodeScanner
         scanLabel={t.scanBarcode}
@@ -197,6 +293,26 @@ function TicketForm({ id }: { id?: string }) {
           </View>
         ) : null}
       </View>
+      <Pressable
+        accessibilityRole="button"
+        className="ledger-touch-target rounded-xl border border-blue-300 px-4 py-3"
+        onPress={() => setShowInlineProduct((current) => !current)}
+      >
+        <Text className="text-center font-semibold text-blue-800">{t.newProduct}</Text>
+      </Pressable>
+      {showInlineProduct ? (
+        <View className="gap-3 rounded-xl bg-white p-4">
+          <LedgerField
+            label={t.productName}
+            value={newProductName}
+            onChangeText={setNewProductName}
+          />
+          <MillimeInput label={t.price} value={newProductPrice} onChangeText={setNewProductPrice} />
+          <Pressable accessibilityRole="button" className="ledger-primary-button" onPress={saveInlineProduct}>
+            <Text className="font-semibold text-white">{t.save}</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {products.length === 0 ? <FeedbackState kind="empty" message={t.noActiveProducts} /> : null}
       <ProductPicker products={products} onSelect={addProduct} />
       <View className="gap-3">

@@ -1,5 +1,5 @@
 import { Provider, useDispatch } from 'react-redux';
-import { Stack } from 'expo-router';
+import { Stack ,usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { store } from '@/store';
@@ -9,6 +9,9 @@ import { getTextDirection } from '@/i18n';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { languageChanged } from '@/features/ledger/store/ledgerSlice';
 import '../global.css';
+import { TopBar } from '@/navigation/TopBar';
+import { BottomTabBar } from 'expo-router/build/react-navigation/bottom-tabs';
+import { BottomTabs } from '@/navigation/BottomTabs';
 
 export default function RootLayout() {
   return (
@@ -86,8 +89,14 @@ function RootContent() {
   }
 
   return (
-    <View className={`flex-1 ${directionClass}`}>
-      <Stack screenOptions={{ headerShown: false }} />
-    </View>
+      <Provider store={store}>
+      <View className="flex-1 bg-slate-50">
+        <TopBar />
+        <View className="flex-1">
+          <Stack screenOptions={{ headerShown: false }} />
+        </View>
+        <BottomTabs  />
+      </View>
+    </Provider>
   );
 }

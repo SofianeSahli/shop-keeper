@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useDispatch } from 'react-redux';
@@ -8,7 +8,7 @@ import { createCustomer, getCustomer, updateCustomer } from '../services/custome
 import { LedgerPage } from '../components/LedgerPage';
 import { LedgerField } from '../components/forms/LedgerField';
 import { FeedbackState } from '../components/feedback/FeedbackState';
-import { refreshCompleted } from '../store/ledgerSlice';
+import { clearFormDirty, refreshCompleted, setFormDirty } from '../store/ledgerSlice';
 
 export function CustomerFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -31,11 +31,26 @@ function CustomerForm({ id }: { id?: string }) {
   const [phoneNumber, setPhoneNumber] = useState(initial.customer?.phoneNumber ?? '');
   const [error, setError] = useState(initial.error);
 
+  useEffect(() => {
+    const hasChanges =
+      displayLabel !== (initial.customer?.displayLabel ?? '') ||
+      realName !== (initial.customer?.realName ?? '') ||
+      phoneNumber !== (initial.customer?.phoneNumber ?? '');
+    dispatch(setFormDirty({ section: 'customers', isDirty: hasChanges && !error }));
+  }, [dispatch, displayLabel, error, initial.customer?.displayLabel, initial.customer?.phoneNumber, initial.customer?.realName, phoneNumber, realName]);
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearFormDirty());
+    };
+  }, [dispatch]);
+
   function save(): void {
     try {
       const input = { displayLabel, realName: realName || null, phoneNumber: phoneNumber || null };
       if (id) updateCustomer(id, input);
       else createCustomer(input);
+      dispatch(clearFormDirty());
       dispatch(refreshCompleted());
       router.replace('/ledger/customers');
     } catch (cause) {
