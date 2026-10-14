@@ -46,7 +46,11 @@ Offline-first behavior preserves continuity of essential shop work when connecti
 
 #### Approved Local-Only Feature Exception
 
+<<<<<<< HEAD
 The approved `001-kridi-credit-ledger` initial release and its explicitly approved `002-ledger-usability-dashboard` usability extension form a single-shop, single-device offline ledger scope. For these two features only, their approved scope supersedes the server/API and authentication requirements in Principles I and IV and the synchronization/reconciliation requirements in this principle. Ledger records and pending operations remain on the device and MUST NOT be uploaded or synchronized. Any future multi-user access, shared data, or reconciliation requires a separately approved feature specification and security design; this exception does not apply to other features.
+=======
+The approved `001-kridi-credit-ledger` initial release is a single-shop, single-device offline ledger. For this feature only, its approved scope supersedes the server/API and authentication requirements in Principles I and IV and the synchronization/reconciliation requirements in this principle. Ledger records and pending operations remain on the device and MUST NOT be uploaded or synchronized. Any future multi-user access, shared data, or reconciliation requires a separately approved feature specification and security design; this exception does not apply to other features.
+>>>>>>> c5a859f92e1436542280b86991185c674aa9afda
 
 ## Additional Constraints
 
@@ -86,4 +90,8 @@ Amendments MUST be documented in the constitution, versioned using semantic vers
 
 All work in the repository MUST be checked against this constitution during planning, implementation, and review. If a feature violates a mandatory requirement, the work MUST be corrected before it is considered complete. Maintainers MUST preserve a durable architectural record of significant decisions and deviations that are intentionally allowed.
 
+<<<<<<< HEAD
 **Version**: 1.5.0 | **Ratified**: 2026-10-10 | **Last Amended**: 2026-10-11
+=======
+**Version**: 1.4.0 | **Ratified**: 2026-10-10 | **Last Amended**: 2026-10-11
+>>>>>>> c5a859f92e1436542280b86991185c674aa9afda
