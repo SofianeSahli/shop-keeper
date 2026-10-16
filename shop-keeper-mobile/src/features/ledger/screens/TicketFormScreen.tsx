@@ -6,7 +6,6 @@ import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { getLedgerErrorMessage } from '@/i18n/errorMessages';
 import { clearFormDirty, refreshCompleted, setFormDirty } from '../store/ledgerSlice';
 import { createProduct, findProductByBarcode, listProducts } from '../services/productService';
-import { createCustomer, listCustomers } from '../services/customerService';
 import {
   addTicketDraftItem,
   calculateTicketTotal,
@@ -14,7 +13,6 @@ import {
 } from '../services/ticketDraftService';
 import { buildTicketFromDraft, updateTicketFromDraft } from '../services/ticketService';
 import { ticketRepository } from '../services/ticketRepository';
-import { Customer } from '../types/customer';
 import { Product, ProductInput } from '../types/product';
 import { TicketDraftItem } from '../types/ticket';
 import { BarcodeScanner } from '../components/ticket/BarcodeScanner';
@@ -26,6 +24,7 @@ import { LedgerPage } from '../components/LedgerPage';
 import { LedgerField } from '../components/forms/LedgerField';
 import { MillimeInput, parseMillimes } from '../components/forms/MillimeInput';
 import { createId } from '@/lib/id';
+import { CustomerSelect } from '../components/customers/CustomerSelect';
 
 export function TicketFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -37,26 +36,20 @@ function TicketForm({ id }: { id?: string }) {
   const dispatch = useDispatch();
   const [initial] = useState(() => {
     try {
-      const customers = listCustomers();
       const products = listProducts();
       const ticket = id ? ticketRepository.getTicket(id, false) : null;
-      return { customers, products, ticket, error: id && !ticket ? t.loadFailed : '' };
+      return { products, ticket, error: id && !ticket ? t.loadFailed : '' };
     } catch (cause) {
       return {
-        customers: [] as Customer[],
         products: [] as Product[],
         ticket: null,
         error: getLedgerErrorMessage(cause, t, t.loadFailed),
       };
     }
   });
-  const [customers, setCustomers] = useState<Customer[]>(initial.customers);
+
   const [products, setProducts] = useState<Product[]>(initial.products);
-  const [customerId, setCustomerId] = useState(initial.ticket?.customerId ?? initial.customers[0]?.id ?? '');
-  const [showInlineCustomer, setShowInlineCustomer] = useState(false);
-  const [newCustomerName, setNewCustomerName] = useState('');
-  const [newCustomerRealName, setNewCustomerRealName] = useState('');
-  const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [customerId, setCustomerId] = useState(initial.ticket?.customerId ?? '');
   const [showInlineProduct, setShowInlineProduct] = useState(false);
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
@@ -78,7 +71,7 @@ function TicketForm({ id }: { id?: string }) {
 
   useEffect(() => {
     const hasChanges =
-      customerId !== (initial.ticket?.customerId ?? initial.customers[0]?.id ?? '') ||
+      customerId !== (initial.ticket?.customerId ?? '') ||
       items.length !== (initial.ticket?.lines.length ?? 0) ||
       items.some((item, index) => {
         const original = initial.ticket?.lines[index];
@@ -89,7 +82,7 @@ function TicketForm({ id }: { id?: string }) {
           item.productName !== original.productNameSnapshot;
       });
     dispatch(setFormDirty({ section: 'tickets', isDirty: hasChanges && !error }));
-  }, [customerId, dispatch, error, initial.customers, initial.ticket, items]);
+  }, [customerId, dispatch, error, customerId, initial.ticket, items]);
 
   useEffect(() => {
     return () => {
@@ -147,25 +140,6 @@ function TicketForm({ id }: { id?: string }) {
     }
   }
 
-  function saveInlineCustomer(): void {
-    try {
-      const created = createCustomer({
-        displayLabel: newCustomerName.trim(),
-        realName: newCustomerRealName.trim() || null,
-        phoneNumber: newCustomerPhone.trim() || null,
-      });
-      setCustomers((current) => [...current, created]);
-      setCustomerId(created.id);
-      setShowInlineCustomer(false);
-      setNewCustomerName('');
-      setNewCustomerRealName('');
-      setNewCustomerPhone('');
-      setError('');
-    } catch (cause) {
-      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
-    }
-  }
-
   function saveInlineProduct(): void {
     try {
       const product = createProduct({
@@ -208,51 +182,12 @@ function TicketForm({ id }: { id?: string }) {
   return (
     <LedgerPage title={id ? t.editTicket : t.newTicket}>
       {error ? <FeedbackState kind="error" message={error} /> : null}
-      <View className="gap-2">
-        <Text className="font-semibold text-slate-800">{t.chooseCustomer}</Text>
-        {customers.map((customer) => (
-          <Pressable
-            key={customer.id}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: customer.id === customerId }}
-            className={`ledger-touch-target rounded-lg p-3 ${customer.id === customerId ? 'bg-blue-100' : 'bg-white'}`}
-            onPress={() => setCustomerId(customer.id)}
-          >
-            <Text className="text-slate-900">{customer.displayLabel}</Text>
-          </Pressable>
-        ))}
-        {customers.length === 0 ? <FeedbackState kind="empty" message={t.emptyCustomers} /> : null}
-        <Pressable
-          accessibilityRole="button"
-          className="ledger-touch-target rounded-xl border border-blue-300 px-4 py-3"
-          onPress={() => setShowInlineCustomer((current) => !current)}
-        >
-          <Text className="text-center font-semibold text-blue-800">{t.newCustomer}</Text>
-        </Pressable>
-        {showInlineCustomer ? (
-          <View className="gap-3 rounded-xl bg-white p-4">
-            <LedgerField
-              label={t.displayLabel}
-              value={newCustomerName}
-              onChangeText={setNewCustomerName}
-            />
-            <LedgerField
-              label={t.realName}
-              value={newCustomerRealName}
-              onChangeText={setNewCustomerRealName}
-            />
-            <LedgerField
-              label={t.phoneNumber}
-              value={newCustomerPhone}
-              onChangeText={setNewCustomerPhone}
-              keyboardType="phone-pad"
-            />
-            <Pressable accessibilityRole="button" className="ledger-primary-button" onPress={saveInlineCustomer}>
-              <Text className="font-semibold text-white">{t.save}</Text>
-            </Pressable>
-          </View>
-        ) : null}
-      </View>
+
+      <CustomerSelect
+        value={customerId}
+        onChange={setCustomerId}
+      ></CustomerSelect>
+
       <BarcodeScanner
         scanLabel={t.scanBarcode}
         permissionLabel={t.cameraAccess}
