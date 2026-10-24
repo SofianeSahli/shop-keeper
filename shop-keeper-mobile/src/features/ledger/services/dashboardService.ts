@@ -1,46 +1,61 @@
 import { paymentRepository } from './paymentRepository';
 import { ticketRepository } from './ticketRepository';
+import { sumActivePaymentsByTicket } from './customerBalanceService';
+import { getLocalDateKey } from '@/lib/dates';
+import { sumMillimeAmounts } from '@/lib/money';
+import { Payment } from '../types/payment';
+import { Ticket } from '../types/ticket';
+
+export { getLocalDateKey };
 
 export interface DashboardSummary {
   localDate: string;
+  /** Every non-voided ticket created today, whatever its payment status (SC-008). */
   todaySalesMillimes: number;
+  todayTicketCount: number;
+  /** Unpaid remainders of all non-voided tickets. */
   outstandingBalanceMillimes: number;
+  openTicketCount: number;
 }
 
-export function getLocalDateKey(input: string | Date): string {
-  const date = typeof input === 'string' ? new Date(input) : input;
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+export function summariseDashboard(
+  tickets: readonly Ticket[],
+  payments: readonly Payment[],
+  date: Date = new Date(),
+): DashboardSummary {
+  const localDate = getLocalDateKey(date);
+  const paidByTicket = sumActivePaymentsByTicket(payments);
+  const summary: DashboardSummary = {
+    localDate,
+    todaySalesMillimes: 0,
+    todayTicketCount: 0,
+    outstandingBalanceMillimes: 0,
+    openTicketCount: 0,
+  };
 
-export function getTodaySalesMillimes(date: Date = new Date()): number {
-  const targetDate = getLocalDateKey(date);
-  const tickets = ticketRepository.listTickets();
-  return tickets
-    .filter((ticket) => !ticket.voidedAt && getLocalDateKey(ticket.createdAt) === targetDate)
-    .reduce((sum, ticket) => sum + ticket.totalMillimes, 0);
-}
-
-export function getOutstandingBalanceMillimes(): number {
-  const tickets = ticketRepository.listTickets();
-  const payments = paymentRepository.listPayments(undefined, true);
-
-  return tickets
-    .filter((ticket) => !ticket.voidedAt)
-    .reduce((sum, ticket) => {
-      const paid = payments
-        .filter((payment) => payment.ticketId === ticket.id && !payment.voidedAt)
-        .reduce((total, payment) => total + payment.amountMillimes, 0);
-      return sum + Math.max(ticket.totalMillimes - paid, 0);
-    }, 0);
+  for (const ticket of tickets) {
+    if (ticket.voidedAt) continue;
+    if (getLocalDateKey(ticket.createdAt) === localDate) {
+      summary.todaySalesMillimes = sumMillimeAmounts([summary.todaySalesMillimes, ticket.totalMillimes]);
+      summary.todayTicketCount += 1;
+    }
+    const remaining = Math.max(ticket.totalMillimes - (paidByTicket.get(ticket.id) ?? 0), 0);
+    if (remaining > 0) {
+      summary.outstandingBalanceMillimes = sumMillimeAmounts([summary.outstandingBalanceMillimes, remaining]);
+      summary.openTicketCount += 1;
+    }
+  }
+  return summary;
 }
 
 export function getDashboardSummary(date: Date = new Date()): DashboardSummary {
-  return {
-    localDate: getLocalDateKey(date),
-    todaySalesMillimes: getTodaySalesMillimes(date),
-    outstandingBalanceMillimes: getOutstandingBalanceMillimes(),
-  };
+  return summariseDashboard(ticketRepository.listTickets(), paymentRepository.listPayments(), date);
+}
+
+export function getTodaySalesMillimes(date: Date = new Date()): number {
+  return getDashboardSummary(date).todaySalesMillimes;
+}
+
+export function getOutstandingBalanceMillimes(): number {
+  return getDashboardSummary().outstandingBalanceMillimes;
 }

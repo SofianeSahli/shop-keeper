@@ -12,6 +12,7 @@ import { MillimeInput, parseMillimes } from '../components/forms/MillimeInput';
 import { FeedbackState } from '../components/feedback/FeedbackState';
 import { BarcodeScanner } from '../components/ticket/BarcodeScanner';
 import { clearFormDirty, refreshCompleted, setFormDirty } from '../store/ledgerSlice';
+import { useDirtyFormGuard } from '../hooks/useDirtyFormGuard';
 
 export function ProductFormScreen() {
   const { id, barcode } = useLocalSearchParams<{ id?: string; barcode?: string }>();
@@ -20,6 +21,7 @@ export function ProductFormScreen() {
 
 function ProductForm({ id, initialBarcode }: { id?: string; initialBarcode?: string }) {
   const { t, language } = useLedgerTranslations();
+  useDirtyFormGuard();
   const dispatch = useDispatch();
   const [initial] = useState(() => {
     try {

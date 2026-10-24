@@ -17,6 +17,8 @@ import { Customer } from '../types/customer';
 import { Payment } from '../types/payment';
 import { Ticket } from '../types/ticket';
 import { parseMillimes } from '../components/forms/MillimeInput';
+import { ConfirmAction } from '../components/feedback/ConfirmAction';
+import { useDirtyFormGuard } from '../hooks/useDirtyFormGuard';
 
 export function PaymentFormScreen() {
   const { id, customerId } = useLocalSearchParams<{ id?: string; customerId?: string }>();
@@ -26,6 +28,7 @@ export function PaymentFormScreen() {
 function PaymentFormPage({ id, initialCustomerId }: { id?: string; initialCustomerId?: string }) {
   const { t } = useLedgerTranslations();
   const dispatch = useDispatch();
+  useDirtyFormGuard();
   const [initial] = useState(() => {
     try {
       const availableCustomers = listCustomers('', true);
@@ -103,6 +106,17 @@ function PaymentFormPage({ id, initialCustomerId }: { id?: string; initialCustom
     }
   }
 
+  function voidPayment(): void {
+    if (!id) return;
+    try {
+      paymentRepository.voidPayment(id);
+      dispatch(refreshCompleted());
+      router.replace('/ledger/payments');
+    } catch (cause) {
+      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
+    }
+  }
+
   return (
     <LedgerPage title={id ? t.editPayment : t.createPayment}>
       {error ? <FeedbackState kind="error" message={error} /> : null}
@@ -124,6 +138,16 @@ function PaymentFormPage({ id, initialCustomerId }: { id?: string; initialCustom
       <Pressable accessibilityRole="button" className="ledger-primary-button" onPress={save}>
         <Text className="font-semibold text-white">{t.save}</Text>
       </Pressable>
+      {id && initial.payment ? (
+        <ConfirmAction
+          buttonLabel={t.voidPayment}
+          title={t.voidPayment}
+          message={t.confirmAction}
+          confirmLabel={t.confirm}
+          cancelLabel={t.cancel}
+          onConfirm={voidPayment}
+        />
+      ) : null}
     </LedgerPage>
   );
 }

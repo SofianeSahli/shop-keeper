@@ -6,6 +6,9 @@ interface MillimeInputProps {
   value: string;
   onChangeText: (value: string) => void;
   error?: string;
+  hint?: string;
+  /** Shows the currency after the value. */
+  suffix?: string;
 }
 
 export function parseMillimes(value: string): number {
@@ -22,15 +25,18 @@ export function parseMillimes(value: string): number {
   return amount;
 }
 
-export function MillimeInput({ label, value, onChangeText, error }: MillimeInputProps) {
+export function MillimeInput({ label, value, onChangeText, error, hint, suffix }: MillimeInputProps) {
   return (
     <LedgerField
       label={label}
       value={value}
       onChangeText={onChangeText}
       error={error}
+      hint={hint}
+      suffix={suffix}
       keyboardType={'decimal-pad' as KeyboardTypeOptions}
-      placeholder="0.000"
+      placeholder="0,000"
+      textAlign="left"
     />
   );
 }

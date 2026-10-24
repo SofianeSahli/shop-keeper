@@ -8,14 +8,14 @@
   }
 
   .ledger-card {
-    @apply gap-3 rounded-2xl border border-slate-200 bg-white p-4;
+    @apply gap-3 rounded-card border border-line bg-surface p-4;
   }
 
   .ledger-primary-button {
-    @apply min-h-12 min-w-12 items-center rounded-xl bg-blue-700 px-4 py-3;
+    @apply min-h-button min-w-touch items-center justify-center rounded-control-lg bg-primary px-4 py-3;
   }
 
   .ledger-touch-target {
-    @apply min-h-12 min-w-12;
+    @apply min-h-touch min-w-touch;
   }
 }
