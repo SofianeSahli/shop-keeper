@@ -2,7 +2,7 @@ import { Text } from 'react-native';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { formatMillimeAmount } from '@/lib/money';
 import { splitMillimeAmount } from './logic/amountParts';
-import { isolateLtr } from './logic/bidi';
+import { splitAmountRuns } from './logic/bidi';
 
 export type AmountSize = 'body' | 'heading' | 'display' | 'display-lg';
 export type AmountTone = 'ink' | 'debt' | 'paid';
@@ -43,7 +43,7 @@ export function AmountText({
   const { t, language } = useLedgerTranslations();
   const parts = splitMillimeAmount(signed ? -Math.abs(millimes) : millimes);
   const classes = SIZE_CLASSES[size];
-  const currency = showCurrency ? ` ${t.currencySuffix}` : '';
+  const runs = splitAmountRuns(parts, showCurrency ? ` ${t.currencySuffix}` : '');
 
   return (
     <Text
@@ -52,8 +52,8 @@ export function AmountText({
       adjustsFontSizeToFit={fitToWidth}
       className={`${classes.main} ${TONE_CLASSES[tone]} tabular-nums`}
     >
-      {isolateLtr(`${parts.sign}${parts.dinars}`)}
-      <Text className={`${classes.minor} font-plex-semibold`}>{isolateLtr(parts.millimes)}{currency}</Text>
+      {runs.major}
+      <Text className={`${classes.minor} font-plex-semibold`}>{runs.minor}</Text>
     </Text>
   );
 }
