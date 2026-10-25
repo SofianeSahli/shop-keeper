@@ -54,8 +54,13 @@ export function CustomerForm({ id, embedded = false, onSaved }: CustomerFormProp
   function save(): void {
     try {
       const input = { displayLabel, realName: realName || null, phoneNumber: phoneNumber || null };
-      if (id) updateCustomer(id, input);
-      else onSaved?.(createCustomer(input));
+      if (id) {
+        updateCustomer(id, input);
+      } else {
+        // Create first: `onSaved?.(createCustomer(…))` would skip the save when no callback is given.
+        const created = createCustomer(input);
+        onSaved?.(created);
+      }
       dispatch(refreshCompleted());
       if (!embedded) {
         dispatch(clearFormDirty());

@@ -9,6 +9,7 @@ import { AmountText, BottomSheet, Icon, InfoBanner, ScreenScroll, SegmentedContr
 import type { SegmentOption } from '@/components/ui';
 import { formatMillimeAmount } from '@/lib/money';
 import { createId } from '@/lib/id';
+import { useTopBarOptions } from '@/navigation/TopBarContext';
 import { clearFormDirty, refreshCompleted, setFormDirty } from '../store/ledgerSlice';
 import { createProduct, findProductByBarcode, listProducts } from '../services/productService';
 import {
@@ -61,6 +62,7 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
   const { t, language } = useLedgerTranslations();
   const dispatch = useDispatch();
   useDirtyFormGuard();
+  useTopBarOptions({ title: id ? t.editTicket : t.newTicket });
   const [initial] = useState(() => {
     try {
       const products = listProducts();
@@ -239,6 +241,12 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
       {initial.ticket ? <StatusChip status={initial.ticket.status} /> : null}
       {isNew ? (
         <>
+          <View className="flex-row items-baseline justify-between gap-2">
+            <Text accessibilityRole="header" className="type-label">
+              {t.paymentStatus}
+            </Text>
+            <Text className="type-caption">{t.howPaidHint}</Text>
+          </View>
           <SegmentedControl
             options={saleOptions}
             value={saleKind}

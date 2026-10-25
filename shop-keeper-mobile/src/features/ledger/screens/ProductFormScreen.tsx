@@ -6,6 +6,7 @@ import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { getLedgerErrorMessage } from '@/i18n/errorMessages';
 import { formatMillimeAmount, formatMillimeInput } from '@/lib/money';
 import { Icon, InfoBanner, ScreenScroll } from '@/components/ui';
+import { useTopBarOptions } from '@/navigation/TopBarContext';
 import { createProduct, getProduct, listProducts, removeProduct, updateProduct } from '../services/productService';
 import { LedgerField } from '../components/forms/LedgerField';
 import { MillimeInput, parseMillimes } from '../components/forms/MillimeInput';
@@ -29,6 +30,7 @@ function findDuplicate(code: string, ownId: string | undefined): Product | null 
 function ProductForm({ id, initialBarcode }: { id?: string; initialBarcode?: string }) {
   const { t, language } = useLedgerTranslations();
   useDirtyFormGuard();
+  useTopBarOptions({ title: id ? t.editProduct : t.newProduct });
   const dispatch = useDispatch();
   const [initial] = useState(() => {
     try {

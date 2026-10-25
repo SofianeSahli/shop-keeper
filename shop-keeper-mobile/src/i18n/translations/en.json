@@ -64,8 +64,6 @@
   "unknownBarcode": "This barcode is not in the catalog yet.",
   "noActiveProducts": "Add an active product before creating a ticket.",
   "selectProductsFirst": "Add at least one product line.",
-  "unpaid": "Unpaid",
-  "partiallyPaid": "Partially paid",
   "paid": "Paid",
   "cameraAccess": "Camera access is required to scan a barcode.",
   "removeLine": "Remove item",
@@ -186,5 +184,10 @@
   "filterPartial": "Partial",
   "filterPaid": "Paid",
   "noTicketsForFilter": "No tickets for this filter.",
-  "ticketInitial": "T"
+  "ticketInitial": "T",
+  "chipUnpaid": "Unpaid",
+  "chipPartial": "Partial",
+  "chipPaid": "Paid",
+  "howPaidHint": "How did the customer pay?",
+  "editProduct": "Edit product"
 }

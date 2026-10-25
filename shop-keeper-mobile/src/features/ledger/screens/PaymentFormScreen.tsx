@@ -7,6 +7,7 @@ import { getLedgerErrorMessage } from '@/i18n/errorMessages';
 import { formatMessage } from '@/i18n/format';
 import { formatMillimeAmount, formatMillimeInput } from '@/lib/money';
 import { InfoBanner, ScreenScroll } from '@/components/ui';
+import { useTopBarOptions } from '@/navigation/TopBarContext';
 import { clearFormDirty, refreshCompleted, setFormDirty } from '../store/ledgerSlice';
 import { PaymentForm } from '../components/payment/PaymentForm';
 import { PaymentTicketSheet, PayableTicket } from '../components/payment/PaymentTicketSheet';
@@ -48,6 +49,7 @@ function PaymentFormPage({ id, initialCustomerId }: { id?: string; initialCustom
   const { t, language } = useLedgerTranslations();
   const dispatch = useDispatch();
   useDirtyFormGuard();
+  useTopBarOptions({ title: id ? t.editPayment : t.collect });
 
   const [initial] = useState(() => {
     try {

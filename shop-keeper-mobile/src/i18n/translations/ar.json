@@ -64,8 +64,6 @@
   "unknownBarcode": "هذا الرمز الشريطي غير موجود في قائمة المنتجات.",
   "noActiveProducts": "أضف منتجاً نشطاً قبل إنشاء فاتورة.",
   "selectProductsFirst": "أضف صنفاً واحداً على الأقل.",
-  "unpaid": "غير مدفوع",
-  "partiallyPaid": "مدفوع جزئياً",
   "paid": "مدفوع",
   "cameraAccess": "يلزم السماح باستخدام الكاميرا لمسح الرمز الشريطي.",
   "removeLine": "إزالة الصنف",
@@ -186,5 +184,10 @@
   "filterPartial": "جزئية",
   "filterPaid": "مدفوعة",
   "noTicketsForFilter": "لا توجد فواتير في هذا التصنيف.",
-  "ticketInitial": "ف"
+  "ticketInitial": "ف",
+  "chipUnpaid": "غير مدفوعة",
+  "chipPartial": "جزئية",
+  "chipPaid": "مدفوعة",
+  "howPaidHint": "كيف دفع العميل؟",
+  "editProduct": "تعديل المنتج"
 }

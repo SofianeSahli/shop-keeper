@@ -2,6 +2,9 @@
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
+  // Light palette only (dark mode is out of scope for 003). `class` stops NativeWind from following the
+  // system color scheme, which throws when the scheme changes while dark mode is media-based.
+  darkMode: 'class',
   theme: {
     // Design tokens only (specs/003-ledger-visual-redesign/design-reference.md §1). Replacing the
     // default palette means a non-token color class simply does not exist (spec SC-001).

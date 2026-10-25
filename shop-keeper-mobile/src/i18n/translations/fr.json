@@ -64,8 +64,6 @@
   "unknownBarcode": "Ce code-barres ne figure pas encore dans le catalogue.",
   "noActiveProducts": "Ajoutez un produit actif avant de créer un ticket.",
   "selectProductsFirst": "Ajoutez au moins un article.",
-  "unpaid": "Impayé",
-  "partiallyPaid": "Partiellement payé",
   "paid": "Payé",
   "cameraAccess": "L'accès à l'appareil photo est nécessaire pour scanner un code-barres.",
   "removeLine": "Retirer l'article",
@@ -186,5 +184,10 @@
   "filterPartial": "Partiels",
   "filterPaid": "Payés",
   "noTicketsForFilter": "Aucun ticket dans ce filtre.",
-  "ticketInitial": "T"
+  "ticketInitial": "T",
+  "chipUnpaid": "Impayé",
+  "chipPartial": "Partiel",
+  "chipPaid": "Payé",
+  "howPaidHint": "Comment le client a-t-il payé ?",
+  "editProduct": "Modifier le produit"
 }

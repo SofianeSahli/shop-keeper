@@ -4,10 +4,10 @@ import { TicketStatus } from '@/features/ledger/types/ticket';
 
 export type ChipStatus = TicketStatus | 'PAYMENT';
 
-const CHIP: Record<ChipStatus, { container: string; text: string; labelKey: 'unpaid' | 'partiallyPaid' | 'paid' | 'payment' }> = {
-  UNPAID: { container: 'bg-debt-soft', text: 'text-debt', labelKey: 'unpaid' },
-  PARTIALLY_PAID: { container: 'bg-partial-soft', text: 'text-partial', labelKey: 'partiallyPaid' },
-  PAID: { container: 'bg-paid-soft', text: 'text-paid', labelKey: 'paid' },
+const CHIP: Record<ChipStatus, { container: string; text: string; labelKey: 'chipUnpaid' | 'chipPartial' | 'chipPaid' | 'payment' }> = {
+  UNPAID: { container: 'bg-debt-soft', text: 'text-debt', labelKey: 'chipUnpaid' },
+  PARTIALLY_PAID: { container: 'bg-partial-soft', text: 'text-partial', labelKey: 'chipPartial' },
+  PAID: { container: 'bg-paid-soft', text: 'text-paid', labelKey: 'chipPaid' },
   PAYMENT: { container: 'bg-muted', text: 'text-ink-2', labelKey: 'payment' },
 };
 
