@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { BottomSheet, Icon, ListRow } from '@/components/ui';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
@@ -39,7 +39,7 @@ export function LanguageMenu() {
       </Pressable>
 
       <BottomSheet visible={open} title={t.language} onClose={() => setOpen(false)}>
-        <Pressable className="ui-card-flush">
+        <View className="ui-card-flush">
           {LANGUAGES.map((entry, index) => (
             <ListRow
               key={entry.code}
@@ -51,7 +51,7 @@ export function LanguageMenu() {
               onPress={() => choose(entry.code)}
             />
           ))}
-        </Pressable>
+        </View>
       </BottomSheet>
     </>
   );

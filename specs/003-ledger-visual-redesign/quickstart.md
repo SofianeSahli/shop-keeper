@@ -43,6 +43,9 @@ Lint check: temporarily add `className={'#fff'}` or `style={{}}` in any `.tsx`. 
 | 21 | US6 | Product form: scan Huile's code; scan a new code; deny the camera. | Duplicate banner + Save disabled + "Ouvrir ce produit"; "Nouveau code, prêt à enregistrer"; permission block with "Autoriser la caméra" while the code field stays editable. |
 | 22 | US7 | Tickets: each filter; open a ticket; edit/void from the detail. Products: search "lai"; remove from the form. | No destructive buttons in list rows; filters by derived status; voided tickets hidden. |
 | 23 | SC-007 | Home → New ticket → Scan → Scan (2 known codes) → Encaisser. | Recorded in 4 taps with no customer step. |
+| 24 | SC-002 | On a 390×844 screen: Home → New ticket → pick Ali → Chercher, add 3 products → Kridi → save. | Start in ≤ 3 taps (New ticket, customer, first product); the 3 lines, total and button fit with at most one scroll. |
+| 25 | FR-022, SC-010 | Switch to Arabic; look at Home, a ticket and a customer ledger. | Amounts read `1 284 500,500 د.ت`, dates and counts use Latin digits (24, not ٢٤), exactly like French apart from the currency word and month names. |
+| 26 | FR-021, SC-009 | After scenarios 3–8, inspect the device database (`pending_changes`). | One `pending` row per ticket, payment, void and the walk-in seed; nothing was sent over the network. |
 
 ## 3. Cross-cutting checks
 

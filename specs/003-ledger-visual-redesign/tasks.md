@@ -222,45 +222,45 @@ description: "Task list for 003 — Ledger Visual Redesign"
 
 ### Tests for User Story 8 (write first, see them fail)
 
-- [ ] T065 [P] [US8] Add `shop-keeper-mobile/src/features/ledger/services/saleService.test.ts` for the pure helpers:
+- [X] T065 [P] [US8] Add `shop-keeper-mobile/src/features/ledger/services/saleService.test.ts` for the pure helpers:
   - `validateSaleChoice`: no customer or walk-in with PARTIAL/UNPAID → `kridiNeedsCustomer`; partial 0, null, negative, non-integer or above total → `partialAmountInvalid`; partial = total → `partialEqualsTotal`; PAID with no customer → `null`.
   - `getSalePaymentAmount` and `getSaleSaveLabel` for each choice.
-- [ ] T066 [P] [US8] Add `recordSale` tests to `saleService.test.ts` (mocked db, as in `paymentRepository.test.ts`):
+- [X] T066 [P] [US8] Add `recordSale` tests to `saleService.test.ts` (mocked db, as in `paymentRepository.test.ts`):
   - one transaction;
   - write order ticket → audit → pending → payment → audit → pending;
   - `AT_SALE` kind with `appliedAt === ticket.createdAt`;
   - no payment for UNPAID;
   - walk-in only with PAID;
   - a failure on the payment insert leaves no ticket (rollback).
-- [ ] T067 [P] [US8] Add `shop-keeper-mobile/src/db/migrations.test.ts` covering `ensureWalkInCustomer`: it inserts the row with id `walk-in` and code `WALK_IN` plus one pending `customer/create`; a second run inserts nothing and logs nothing.
-- [ ] T068 [P] [US8] Extend `shop-keeper-mobile/src/features/ledger/services/paymentRepository.test.ts` and `crudServices.test.ts` with the walk-in guards:
+- [X] T067 [P] [US8] Add `shop-keeper-mobile/src/db/migrations.test.ts` covering `ensureWalkInCustomer`: it inserts the row with id `walk-in` and code `WALK_IN` plus one pending `customer/create`; a second run inserts nothing and logs nothing.
+- [X] T068 [P] [US8] Extend `shop-keeper-mobile/src/features/ledger/services/paymentRepository.test.ts` and `crudServices.test.ts` with the walk-in guards:
   - `createPayment` on a walk-in ticket rejects;
   - `updatePayment`/`voidPayment` of a walk-in `AT_SALE` payment rejects;
   - `updateTicket` of a walk-in ticket with total ≠ paid rejects;
   - reassignment to walk-in rejects;
   - `updateCustomer`/`removeCustomer` of walk-in rejects;
   - `listCustomers` excludes walk-in unless `includeWalkIn`.
-  The existing assertions stay unchanged.
-- [ ] T069 [P] [US8] Add `voidTicket` cascade tests (in a new `shop-keeper-mobile/src/features/ledger/services/ticketRepository.test.ts`): active `AT_SALE` payments are voided with an audit `void` + pending `payment/soft_delete` each, in the same transaction; `TICKET` payments are untouched.
-- [ ] T070 [P] [US8] Add `shop-keeper-mobile/src/i18n/errorMessages.test.ts`, checking that the walk-in and kridi-needs-customer messages map to `walkInLocked`, `kridiNeedsCustomer` and `partialAmountInvalid` before the generic ticket and amount rules.
+  The existing assertions stay unchanged. *(Done in `ticketRepository.test.ts` against a real in-memory SQLite database (`src/test/ledgerTestDb.ts`), which also proves rollbacks.)*
+- [X] T069 [P] [US8] Add `voidTicket` cascade tests (in a new `shop-keeper-mobile/src/features/ledger/services/ticketRepository.test.ts`): active `AT_SALE` payments are voided with an audit `void` + pending `payment/soft_delete` each, in the same transaction; `TICKET` payments are untouched.
+- [X] T070 [P] [US8] Add `shop-keeper-mobile/src/i18n/errorMessages.test.ts`, checking that the walk-in and kridi-needs-customer messages map to `walkInLocked`, `kridiNeedsCustomer` and `partialAmountInvalid` before the generic ticket and amount rules.
 
 ### Implementation for User Story 8
 
-- [ ] T071 [P] [US8] Add `'AT_SALE'` to `PaymentKind` in `shop-keeper-mobile/src/features/ledger/types/payment.ts`. Create `shop-keeper-mobile/src/features/ledger/types/sale.ts` with `SalePaymentChoice = { kind: 'PAID' } | { kind: 'PARTIAL'; amountMillimes: number | null } | { kind: 'UNPAID' }`.
-- [ ] T072 [US8] Implement `ensureWalkInCustomer(db)` in `shop-keeper-mobile/src/db/migrations.ts`:
+- [X] T071 [P] [US8] Add `'AT_SALE'` to `PaymentKind` in `shop-keeper-mobile/src/features/ledger/types/payment.ts`. Create `shop-keeper-mobile/src/features/ledger/types/sale.ts` with `SalePaymentChoice = { kind: 'PAID' } | { kind: 'PARTIAL'; amountMillimes: number | null } | { kind: 'UNPAID' }`.
+- [X] T072 [US8] Implement `ensureWalkInCustomer(db)` in `shop-keeper-mobile/src/db/migrations.ts`:
   - `INSERT OR IGNORE INTO customers` with id `'walk-in'`, `internal_code 'WALK_IN'`, `display_label 'walk-in'`, `is_active 1`, and ISO timestamps;
   - when changes = 1, persist the pending `customer/create` in the same transaction;
   - call it last in `migrateLedgerDatabase`.
-- [ ] T073 [US8] Refactor `shop-keeper-mobile/src/features/ledger/services/ticketRepository.ts` without changing behaviour: extract `insertTicketRecords(ticket, db)` (customer check, `saveTicket`, audit, pending) and have `createTicket` wrap it in `transaction`. Existing tests stay green.
-- [ ] T074 [US8] Refactor `shop-keeper-mobile/src/features/ledger/services/paymentRepository.ts` without changing behaviour: export a module-level `insertPaymentRecords(payment, db)` (row, audit, pending) used by `createPayment`.
-- [ ] T075 [US8] Implement `validateSaleChoice`, `getSalePaymentAmount`, `getSaleSaveLabel` and `recordSale(ticket, choice)` in `shop-keeper-mobile/src/features/ledger/services/saleService.ts`. `recordSale` runs one `withLedgerTransaction` that calls `insertTicketRecords`, then `insertPaymentRecords` with `paymentKind 'AT_SALE'` and `appliedAt = ticket.createdAt` when the amount is above 0. A partial amount must be a "positive integer number of millimes strictly lower than the ticket total" (FR-018).
-- [ ] T076 [US8] Add the walk-in guards and the void cascade (research R18, R19):
+- [X] T073 [US8] Refactor `shop-keeper-mobile/src/features/ledger/services/ticketRepository.ts` without changing behaviour: extract `insertTicketRecords(ticket, db)` (customer check, `saveTicket`, audit, pending) and have `createTicket` wrap it in `transaction`. Existing tests stay green.
+- [X] T074 [US8] Refactor `shop-keeper-mobile/src/features/ledger/services/paymentRepository.ts` without changing behaviour: export a module-level `insertPaymentRecords(payment, db)` (row, audit, pending) used by `createPayment`.
+- [X] T075 [US8] Implement `validateSaleChoice`, `getSalePaymentAmount`, `getSaleSaveLabel` and `recordSale(ticket, choice)` in `shop-keeper-mobile/src/features/ledger/services/saleService.ts`. `recordSale` runs one `withLedgerTransaction` that calls `insertTicketRecords`, then `insertPaymentRecords` with `paymentKind 'AT_SALE'` and `appliedAt = ticket.createdAt` when the amount is above 0. A partial amount must be a "positive integer number of millimes strictly lower than the ticket total" (FR-018).
+- [X] T076 [US8] Add the walk-in guards and the void cascade (research R18, R19):
   - in `ticketRepository.ts`: `createTicket` rejects walk-in; `updateTicket` keeps a walk-in ticket's total equal to the amount paid and rejects reassignment to walk-in; `voidTicket` voids the active `AT_SALE` payments through the shared payment writer, with audit and pending entries;
   - in `paymentRepository.ts`: reject payments on walk-in tickets, and reject updating or voiding a walk-in `AT_SALE` payment.
-- [ ] T077 [US8] Lock and exclude the walk-in customer in `shop-keeper-mobile/src/features/ledger/services/customerService.ts` (`updateCustomer`/`removeCustomer` reject; `listCustomers` gets an `{ includeWalkIn = false }` option) and `ledgerRepository.ts` (an `id <> ?` predicate).
-- [ ] T078 [US8] Add the error rules for `walkInLocked`, `kridiNeedsCustomer` and `partialAmountInvalid` in `shop-keeper-mobile/src/i18n/errorMessages.ts`, placed before the generic rules.
+- [X] T077 [US8] Lock and exclude the walk-in customer in `shop-keeper-mobile/src/features/ledger/services/customerService.ts` (`updateCustomer`/`removeCustomer` reject; `listCustomers` gets an `{ includeWalkIn = false }` option) and `ledgerRepository.ts` (an `id <> ?` predicate).
+- [X] T078 [US8] Add the error rules for `walkInLocked`, `kridiNeedsCustomer` and `partialAmountInvalid` in `shop-keeper-mobile/src/i18n/errorMessages.ts`, placed before the generic rules.
 - [X] T079 [P] [US8] Create `shop-keeper-mobile/src/features/ledger/components/customers/customerLabel.ts` with `getCustomerLabel(customer | id, t)`, which returns `t.walkInCustomer` for walk-in. Use it in the payment history (T047), ticket list and ticket detail. *(Done early in Phase 3 to resolve analysis O1; the payment history uses it.)*
-- [ ] T080 [US8] Add the sale selector to the `TicketFormScreen.tsx` footer (new tickets only; hidden on edit, where the derived `StatusChip` is shown instead):
+- [X] T080 [US8] Add the sale selector to the `TicketFormScreen.tsx` footer (new tickets only; hidden on edit, where the derived `StatusChip` is shown instead):
   - a `SegmentedControl` (`paymentStatus`: `statusPaidShort` / `statusPartialShort` / `statusKridiShort`), default Payé;
   - with Partiel, a `MillimeInput suffix` (`amountReceived`) and the `remainingToKridi` line in `debt`;
   - the Save button label from `getSaleSaveLabel` + `formatMessage`, with the `paid` button for Payé/Partiel and `primary` for Kridi;
@@ -268,7 +268,7 @@ description: "Task list for 003 — Ledger Visual Redesign"
   - validation errors shown live (customer card `error`, message under the amount);
   - save calls `recordSale(buildTicketFromDraft(customerId || WALK_IN_CUSTOMER_ID, items), choice)`;
   - the draft is kept on failure.
-- [ ] T081 [US8] Add the keys `walkInCustomer`, `paymentStatus`, `statusPaidShort`, `statusPartialShort`, `statusKridiShort`, `collectAmount`, `collectWithRemainder`, `putOnKridi`, `remainingToKridi`, `kridiNeedsCustomer`, `partialAmountInvalid`, `partialEqualsTotal`, `paidAtSale`, `walkInLocked` and `voidTicketWithSalePayment` to `shop-keeper-mobile/src/i18n/translations/{fr,ar,en}.json`.
+- [X] T081 [US8] Add the keys `walkInCustomer`, `paymentStatus`, `statusPaidShort`, `statusPartialShort`, `statusKridiShort`, `collectAmount`, `collectWithRemainder`, `putOnKridi`, `remainingToKridi`, `kridiNeedsCustomer`, `partialAmountInvalid`, `partialEqualsTotal`, `paidAtSale`, `walkInLocked` and `voidTicketWithSalePayment` to `shop-keeper-mobile/src/i18n/translations/{fr,ar,en}.json`.
 
 **Checkpoint**: Every sale is recorded as a ticket. The dashboard sales figure is the real daily total (SC-008).
 
@@ -280,22 +280,22 @@ description: "Task list for 003 — Ledger Visual Redesign"
 
 **Independent Test**: Pay a partial ticket with each chip and with a typed amount. Chips clamp, and the 001 validation still blocks zero or excessive amounts (quickstart 15–18).
 
-- [ ] T082 [P] [US4] Replace `TicketSelectionDialog.tsx` with `shop-keeper-mobile/src/features/ledger/components/payment/PaymentTicketSheet.tsx`: a `BottomSheet` (`selectTicket` / `oldestSelected`) of radio `ListRow`s (date, `StatusChip` · total, remaining in `debt`) with the current choice marked and a `validate` confirm.
-- [ ] T083 [P] [US4] Replace `CustomerSelectionDialog.tsx` with a customer `BottomSheet` built from the `CustomerPickerCard` list (walk-in excluded, only customers with open tickets first). It opens automatically when the form starts without a customer (SC-003: Collect → customer → Save).
-- [ ] T084 [US4] Rebuild `shop-keeper-mobile/src/features/ledger/components/payment/PaymentForm.tsx`:
+- [X] T082 [P] [US4] Replace `TicketSelectionDialog.tsx` with `shop-keeper-mobile/src/features/ledger/components/payment/PaymentTicketSheet.tsx`: a `BottomSheet` (`selectTicket` / `oldestSelected`) of radio `ListRow`s (date, `StatusChip` · total, remaining in `debt`) with the current choice marked and a `validate` confirm.
+- [X] T083 [P] [US4] Replace `CustomerSelectionDialog.tsx` with a customer `BottomSheet` built from the `CustomerPickerCard` list (walk-in excluded, only customers with open tickets first). It opens automatically when the form starts without a customer (SC-003: Collect → customer → Save).
+- [X] T084 [US4] Rebuild `shop-keeper-mobile/src/features/ledger/components/payment/PaymentForm.tsx`:
   - a customer card (Avatar, label, "Doit en tout X DT · n tickets" in `debt`, `change`);
   - a `ticketToPay` card (receipt icon, ticket date, "Reste X DT sur Y DT", `change`);
   - a 72-high amount field (`type-display-lg`, DT suffix);
   - quick chips from `getQuickAmountOptions(remaining, QUICK_AMOUNTS_MILLIMES)`, with "Whole ticket" prefilled on open;
   - the remaining line (`debt-soft` `remainingAfter` X, or `paid-soft` `ticketFullyPaid`);
   - an `EmptyState` when the customer has no unpaid ticket.
-- [ ] T085 [US4] Update `shop-keeper-mobile/src/features/ledger/screens/PaymentFormScreen.tsx`:
+- [X] T085 [US4] Update `shop-keeper-mobile/src/features/ledger/screens/PaymentFormScreen.tsx`:
   - use `ScreenScroll footer` with a `paid` button "Enregistrer X DT";
   - preselect the oldest unpaid ticket and the whole amount;
   - load customers without walk-in;
   - keep `paymentRepository` validation and the error mapping;
   - in edit mode, block a walk-in `AT_SALE` payment with `walkInLocked`.
-- [ ] T086 [US4] Add the keys `ticketToPay`, `change`, `amountReceived`, `wholeTicket`, `remainingAfter`, `ticketFullyPaid`, `oldestSelected`, `validate`, `owesInTotal`, `ticketOfDate` and `remainingOf` to `shop-keeper-mobile/src/i18n/translations/{fr,ar,en}.json`.
+- [X] T086 [US4] Add the keys `ticketToPay`, `change`, `amountReceived`, `wholeTicket`, `remainingAfter`, `ticketFullyPaid`, `oldestSelected`, `validate`, `owesInTotal`, `ticketOfDate` and `remainingOf` to `shop-keeper-mobile/src/i18n/translations/{fr,ar,en}.json`.
 
 **Checkpoint**: Collecting a payment takes 3 taps from Home.
 
@@ -307,9 +307,9 @@ description: "Task list for 003 — Ledger Visual Redesign"
 
 **Independent Test**: With mixed balances, check the order, chip counts, filters, search, conditional call button and day grouping (quickstart 19, 20).
 
-- [ ] T087 [P] [US5] Add tests for `getCustomerLedgerEntries(customerId)` to `shop-keeper-mobile/src/features/ledger/services/customerBalanceService.test.ts`: tickets with remaining, payments with `ticketCreatedAt` and `paymentKind`, voided entries excluded, newest first.
-- [ ] T088 [US5] Implement `getCustomerLedgerEntries(customerId)` in `shop-keeper-mobile/src/features/ledger/services/customerBalanceService.ts`, returning `{ type: 'ticket', ticket, remaining } | { type: 'payment', payment, ticketCreatedAt }`.
-- [ ] T089 [US5] Rebuild `shop-keeper-mobile/src/features/ledger/screens/CustomerListScreen.tsx`:
+- [X] T087 [P] [US5] Add tests for `getCustomerLedgerEntries(customerId)` to `shop-keeper-mobile/src/features/ledger/services/customerBalanceService.test.ts`: tickets with remaining, payments with `ticketCreatedAt` and `paymentKind`, voided entries excluded, newest first.
+- [X] T088 [US5] Implement `getCustomerLedgerEntries(customerId)` in `shop-keeper-mobile/src/features/ledger/services/customerBalanceService.ts`, returning `{ type: 'ticket', ticket, remaining } | { type: 'payment', payment, ticketCreatedAt }`.
+- [X] T089 [US5] Rebuild `shop-keeper-mobile/src/features/ledger/screens/CustomerListScreen.tsx`:
   - a `SearchField` (`customerSearchPlaceholder`);
   - `FilterChips` `filterOwes`/`filterUpToDate`/`filterAll` with counts from `getCustomerFilterCounts`, defaulting to Owes or to the `filter` route param;
   - the `sortedByDebt` caption;
@@ -317,7 +317,7 @@ description: "Task list for 003 — Ledger Visual Redesign"
   - a `Fab` "+ Client" to `/ledger/customer-form`;
   - an `EmptyState` per filter and search;
   - the edit action moved to the ledger top bar.
-- [ ] T090 [US5] Rebuild `shop-keeper-mobile/src/features/ledger/screens/CustomerLedgerScreen.tsx`:
+- [X] T090 [US5] Rebuild `shop-keeper-mobile/src/features/ledger/screens/CustomerLedgerScreen.tsx`:
   - `useTopBarOptions({ title: label, action: edit pencil })`;
   - a balance card (`remainingToPay`, `AmountText display tone="debt"`, `openTicketsCount · oldestOpen`);
   - a 48 `paid-soft` call button (`Linking.openURL('tel:…')`, label `call`) shown only when a phone exists;
@@ -325,7 +325,7 @@ description: "Task list for 003 — Ledger Visual Redesign"
   - a `history` list grouped with `DayHeader` (ticket rows: "T" tile, `ticketItemsCount`, `StatusChip`, total + `remaining`; payment rows: "−" tile, `paidCash` or `paidAtSale`, `StatusChip PAYMENT`, signed paid amount, `onTicketOf`);
   - empty and load-error states.
 - [X] T091 [US5] Make `shop-keeper-mobile/src/features/ledger/screens/TicketFormScreen.tsx` accept a `customerId` route param to preselect the customer (used by the ledger "Ticket" button).
-- [ ] T092 [US5] Add the keys `customerSearchPlaceholder`, `filterOwes`, `filterUpToDate`, `filterAll`, `sortedByDebt`, `upToDate`, `owedSuffix`, `allPaidOn`, `daysAgo`, `call`, `oldestOpen`, `remainingToPay`, `paidCash`, `onTicketOf` and `ticketItemsCount` to `shop-keeper-mobile/src/i18n/translations/{fr,ar,en}.json`.
+- [X] T092 [US5] Add the keys `customerSearchPlaceholder`, `filterOwes`, `filterUpToDate`, `filterAll`, `sortedByDebt`, `upToDate`, `owedSuffix`, `allPaidOn`, `daysAgo`, `call`, `oldestOpen`, `remainingToPay`, `paidCash`, `onTicketOf` and `ticketItemsCount` to `shop-keeper-mobile/src/i18n/translations/{fr,ar,en}.json`.
 
 **Checkpoint**: Owners can find who owes the most and drill into their history.
 
@@ -337,12 +337,12 @@ description: "Task list for 003 — Ledger Visual Redesign"
 
 **Independent Test**: Scan or type an existing code, a new code, and deny the camera. The three states appear and manual entry always works (quickstart 21).
 
-- [ ] T093 [US6] Implement `BarcodeScanner` `mode="inline"` in `shop-keeper-mobile/src/features/ledger/components/ticket/BarcodeScanner.tsx`:
+- [X] T093 [US6] Implement `BarcodeScanner` `mode="inline"` in `shop-keeper-mobile/src/features/ledger/components/ticket/BarcodeScanner.tsx`:
   - a 200-high, radius-20 dark viewfinder with four corner marks and an amber scan line, using `.ui-viewfinder*` classes added to `src/components/ui/ui.css`;
   - the `aimAtCode` caption;
   - permission denied or unavailable → the same block with a message and an `allowCamera` button;
   - `onScanned` fills the code field.
-- [ ] T094 [US6] Rebuild `shop-keeper-mobile/src/features/ledger/screens/ProductFormScreen.tsx`:
+- [X] T094 [US6] Rebuild `shop-keeper-mobile/src/features/ledger/screens/ProductFormScreen.tsx`:
   - the inline scanner at the top;
   - a `barcodeOptional` field + 52-square re-scan button;
   - duplicate → `InfoBanner warning` (`codeExists`, "name · price", action `openThisProduct`), with Save disabled (`accessibilityState.disabled`);
@@ -352,7 +352,7 @@ description: "Task list for 003 — Ledger Visual Redesign"
   - `MillimeInput suffix` with the `millimesHint`;
   - `StickyFooter` with `saveProduct`;
   - in edit mode, a remove action behind `ConfirmAction` (moved from the catalog).
-- [ ] T095 [US6] Add the keys `aimAtCode`, `codeExists`, `openThisProduct`, `newCodeReady`, `noCameraHint`, `millimesHint`, `allowCamera`, `barcodeOptional` and `saveProduct` to `shop-keeper-mobile/src/i18n/translations/{fr,ar,en}.json`.
+- [X] T095 [US6] Add the keys `aimAtCode`, `codeExists`, `openThisProduct`, `newCodeReady`, `noCameraHint`, `millimesHint`, `allowCamera`, `barcodeOptional` and `saveProduct` to `shop-keeper-mobile/src/i18n/translations/{fr,ar,en}.json`.
 
 **Checkpoint**: The product form matches the design. All 002 duplicate behaviour is preserved.
 
@@ -364,15 +364,15 @@ description: "Task list for 003 — Ledger Visual Redesign"
 
 **Independent Test**: Filter tickets by each status, open one and void it from the detail with confirmation; search products and remove one from its form (quickstart 22).
 
-- [ ] T096 [P] [US7] Add `filterTicketsByStatus(tickets, filter: 'ALL' | TicketStatus)` to `shop-keeper-mobile/src/features/ledger/services/ticketService.ts` (voided tickets always excluded). Test it in `ledgerDomain.test.ts`.
-- [ ] T097 [US7] Rebuild `shop-keeper-mobile/src/features/ledger/screens/TicketListScreen.tsx`:
+- [X] T096 [P] [US7] Add `filterTicketsByStatus(tickets, filter: 'ALL' | TicketStatus)` to `shop-keeper-mobile/src/features/ledger/services/ticketService.ts` (voided tickets always excluded). Test it in `ledgerDomain.test.ts`.
+- [X] T097 [US7] Rebuild `shop-keeper-mobile/src/features/ledger/screens/TicketListScreen.tsx`:
   - `FilterChips` `filterAll`/`filterUnpaid`/`filterPartial`/`filterPaid`;
   - `DayHeader` groups, newest first;
   - `ListRow`s (Avatar, `getCustomerLabel`, `itemsCount · HH:mm`, `StatusChip`, the remaining amount for open tickets or the total for paid ones) that open `/ledger/ticket-detail`;
   - **no** edit or void buttons in rows;
   - a `Fab` "+ Ticket";
   - an `EmptyState` per filter.
-- [ ] T098 [US7] Rebuild `shop-keeper-mobile/src/features/ledger/screens/TicketDetailScreen.tsx`:
+- [X] T098 [US7] Rebuild `shop-keeper-mobile/src/features/ledger/screens/TicketDetailScreen.tsx`:
   - `useTopBarOptions` title;
   - a header card with customer label, date, `StatusChip`, total and remaining;
   - the lines;
@@ -380,13 +380,13 @@ description: "Task list for 003 — Ledger Visual Redesign"
   - an audit history;
   - an Edit button (outline) and a Void action through `ConfirmAction` whose message is `voidTicketWithSalePayment` when an active `AT_SALE` exists;
   - a `collect` button when the ticket is unpaid or partial and not walk-in.
-- [ ] T099 [US7] Rebuild `shop-keeper-mobile/src/features/ledger/screens/ProductCatalogScreen.tsx`:
+- [X] T099 [US7] Rebuild `shop-keeper-mobile/src/features/ledger/screens/ProductCatalogScreen.tsx`:
   - a `SearchField` (`productSearchPlaceholder`);
   - one card of `ListRow`s (cube tile, name, code or `noCode`, price `AmountText`) that open `/ledger/product-form?id=…`;
   - **no** remove button;
   - a `Fab` "+ Produit";
   - an `EmptyState` for an empty catalog or no search results.
-- [ ] T100 [US7] Add the keys `itemsCount`, `filterUnpaid`, `filterPartial` and `filterPaid` to `shop-keeper-mobile/src/i18n/translations/{fr,ar,en}.json`.
+- [X] T100 [US7] Add the keys `itemsCount`, `filterUnpaid`, `filterPartial` and `filterPaid` to `shop-keeper-mobile/src/i18n/translations/{fr,ar,en}.json`.
 
 **Checkpoint**: All user stories are functional.
 
@@ -394,21 +394,21 @@ description: "Task list for 003 — Ledger Visual Redesign"
 
 ## Phase 11: Polish & Cross-Cutting Concerns
 
-- [ ] T101 Delete the replaced components once `grep` shows no import:
+- [X] T101 Delete the replaced components once `grep` shows no import:
   - `shop-keeper-mobile/src/features/ledger/components/LedgerPage.tsx`;
   - `components/utils/DialogShell.tsx`;
   - `components/ticket/ProductPicker.tsx`, `TicketLineEditor.tsx` and `TicketTotal.tsx`;
   - `components/payment/TicketSelectionDialog.tsx` and `CustomerSelectionDialog.tsx`;
   - `components/customers/CustomerSelect.tsx`.
-- [ ] T102 Translations audit. `grep` `.tsx` files under `shop-keeper-mobile/src/` for string literals rendered in `<Text>` and for keys used but missing. Verify that the AR wording follows the `فاتورة` convention and that `translations.test.ts` is green. Remove keys no longer used.
-- [ ] T103 [P] Accessibility audit of `shop-keeper-mobile/src/components/ui/*.tsx` and all screens: role, label and state on every pressable; min 44 dp; header roles on section titles; amounts announced in full.
-- [ ] T104 [P] Mark the four 002 leftovers done in `specs/002-ledger-usability-dashboard/tasks.md` (referencing T036–T044), and update the "Known issues" section of `CLAUDE.md`.
-- [ ] T105 Run `npm run validate` in `shop-keeper-mobile/` and fix every lint, type and test failure.
-- [ ] T106 Run every scenario of `specs/003-ledger-visual-redesign/quickstart.md` on Android (and iOS if available) in FR and AR, at 100% and 130% font scale, including the font-failure and long-value checks. Record results and screenshots in the PR description.
+- [X] T102 Translations audit. `grep` `.tsx` files under `shop-keeper-mobile/src/` for string literals rendered in `<Text>` and for keys used but missing. Verify that the AR wording follows the `فاتورة` convention and that `translations.test.ts` is green. Remove keys no longer used.
+- [X] T103 [P] Accessibility audit of `shop-keeper-mobile/src/components/ui/*.tsx` and all screens: role, label and state on every pressable; min 44 dp; header roles on section titles; amounts announced in full.
+- [X] T104 [P] Mark the four 002 leftovers done in `specs/002-ledger-usability-dashboard/tasks.md` (referencing T036–T044), and update the "Known issues" section of `CLAUDE.md`.
+- [X] T105 Run `npm run validate` in `shop-keeper-mobile/` and fix every lint, type and test failure.
+- [ ] T106 **(Owner, on a device; automated part done, see [validation.md](./validation.md).)** Run every scenario of `specs/003-ledger-visual-redesign/quickstart.md` on Android (and iOS if available) in FR and AR, at 100% and 130% font scale, including the font-failure and long-value checks. Record results and screenshots in the PR description.
 - [X] T108 Write numbers identically in every language (spec FR-022): one number locale (`fr-TN-u-nu-latn`) for money in `shop-keeper-mobile/src/lib/money.ts` and `src/components/ui/logic/amountParts.ts`, Latin digits in dates (`-u-nu-latn`), comma in amount input values; only `currencySuffix` is translated. Tests in `src/lib/money.test.ts` and `amountParts.test.ts`.
 - [X] T109 Upgrade `shop-keeper-mobile` to Expo SDK 58 (spec FR-023): `expo@^58`, the expected package versions, a clean `package-lock.json`, `npx expo-doctor` passing, and `useDirtyFormGuard` moved to the Expo Router 58 `usePreventRemove(…, ({ repeat }))` API.
-- [ ] T110 Add an operation-log assertion to every write test in Phase 6 (spec FR-021, SC-009): each write leaves one `pending` entry created inside the same transaction.
-- [ ] T107 Tick the remaining box in `specs/003-ledger-visual-redesign/checklists/requirements.md` and set the spec status to "Implemented" in `spec.md`.
+- [X] T110 Add an operation-log assertion to every write test in Phase 6 (spec FR-021, SC-009): each write leaves one `pending` entry created inside the same transaction.
+- [X] T107 Tick the remaining box in `specs/003-ledger-visual-redesign/checklists/requirements.md` and set the spec status to "Implemented" in `spec.md`. *(Checklist 7/7; status reads "Implemented, pending device validation (T106)".)*
 
 ---
 

@@ -5,7 +5,9 @@ import { useDispatch } from 'react-redux';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { getLedgerErrorMessage } from '@/i18n/errorMessages';
 import { formatMessage } from '@/i18n/format';
-import { AmountText, BottomSheet, Icon, InfoBanner, ScreenScroll, StatusChip, isolateLtr } from '@/components/ui';
+import { AmountText, BottomSheet, Icon, InfoBanner, ScreenScroll, SegmentedControl, StatusChip, isolateLtr } from '@/components/ui';
+import type { SegmentOption } from '@/components/ui';
+import { formatMillimeAmount } from '@/lib/money';
 import { createId } from '@/lib/id';
 import { clearFormDirty, refreshCompleted, setFormDirty } from '../store/ledgerSlice';
 import { createProduct, findProductByBarcode, listProducts } from '../services/productService';
@@ -15,6 +17,9 @@ import {
   updateTicketDraftItemQuantity,
 } from '../services/ticketDraftService';
 import { buildTicketFromDraft, updateTicketFromDraft } from '../services/ticketService';
+import { getSaleSaveLabel, getSalePaymentAmount, recordSale, validateSaleChoice } from '../services/saleService';
+import { isWalkInCustomer, WALK_IN_CUSTOMER_ID } from '../constants';
+import { SalePaymentChoice, SalePaymentKind } from '../types/sale';
 import { ticketRepository } from '../services/ticketRepository';
 import { Product } from '../types/product';
 import { Ticket, TicketDraftItem } from '../types/ticket';
@@ -44,8 +49,16 @@ function toDraftItems(ticket: Ticket | null): TicketDraftItem[] {
   );
 }
 
+function parseAmountOrNull(value: string): number | null {
+  try {
+    return parseMillimes(value);
+  } catch {
+    return null;
+  }
+}
+
 function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?: string }) {
-  const { t } = useLedgerTranslations();
+  const { t, language } = useLedgerTranslations();
   const dispatch = useDispatch();
   useDirtyFormGuard();
   const [initial] = useState(() => {
@@ -72,6 +85,11 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
   const [newProductPrice, setNewProductPrice] = useState('');
   const [pendingBarcode, setPendingBarcode] = useState('');
   const [error, setError] = useState(initial.error);
+  // Payment status chosen at sale (spec 003, US8): new tickets only, Paid by default.
+  const isNew = !id;
+  const [saleKind, setSaleKind] = useState<SalePaymentKind>('PAID');
+  const [partialAmount, setPartialAmount] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     const original = initial.ticket?.lines ?? [];
@@ -165,15 +183,16 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
   }
 
   function save(): void {
+    setSubmitted(true);
     try {
-      if (!customerId) throw new Error(t.chooseCustomer);
       if (items.length === 0) throw new Error(t.selectProductsFirst);
       if (id) {
         const existing = ticketRepository.getTicket(id, false);
         if (!existing) throw new Error(t.loadFailed);
-        ticketRepository.updateTicket(id, updateTicketFromDraft(existing, customerId, items));
+        ticketRepository.updateTicket(id, updateTicketFromDraft(existing, customerId || existing.customerId, items));
       } else {
-        ticketRepository.createTicket(buildTicketFromDraft(customerId, items));
+        if (choiceError) return; // shown under the customer card or the amount field
+        recordSale(buildTicketFromDraft(customerId || WALK_IN_CUSTOMER_ID, items), choice);
       }
       dispatch(clearFormDirty());
       dispatch(refreshCompleted());
@@ -184,6 +203,32 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
   }
 
   const total = calculateTicketTotal(items);
+  const choice: SalePaymentChoice =
+    saleKind === 'PARTIAL' ? { kind: 'PARTIAL', amountMillimes: parseAmountOrNull(partialAmount) } : { kind: saleKind };
+  const choiceError = isNew && items.length > 0 ? validateSaleChoice(choice, total, customerId || null) : null;
+  const customerError = choiceError === 'kridiNeedsCustomer' ? t.kridiNeedsCustomer : undefined;
+  const amountError =
+    choiceError === 'partialAmountInvalid' && (submitted || partialAmount !== '')
+      ? t.partialAmountInvalid
+      : choiceError === 'partialEqualsTotal'
+        ? t.partialEqualsTotal
+        : undefined;
+  const ticketIsWalkIn = isWalkInCustomer(initialCustomer);
+  const saleOptions: SegmentOption<SalePaymentKind>[] = [
+    { value: 'PAID', label: t.statusPaidShort, tone: 'paid' },
+    { value: 'PARTIAL', label: t.statusPartialShort, tone: 'partial' },
+    { value: 'UNPAID', label: t.statusKridiShort, tone: 'debt' },
+  ];
+  const saveLabel = (() => {
+    if (!isNew) return t.save;
+    const label = getSaleSaveLabel(choice, total);
+    const money = (value: number) => formatMillimeAmount(value, language);
+    if (label.key === 'collectWithRemainder') {
+      return formatMessage(t.collectWithRemainder, { paid: money(label.params.paid), rest: money(label.params.rest) });
+    }
+    return formatMessage(t[label.key], { amount: money(label.params.amount) });
+  })();
+  const saveButtonClass = isNew && saleKind !== 'UNPAID' ? 'ui-button-paid' : 'ui-button-primary';
 
   const footer = (
     <>
@@ -192,13 +237,44 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
         <AmountText millimes={total} size="display" fitToWidth />
       </View>
       {initial.ticket ? <StatusChip status={initial.ticket.status} /> : null}
+      {isNew ? (
+        <>
+          <SegmentedControl
+            options={saleOptions}
+            value={saleKind}
+            onChange={setSaleKind}
+            accessibilityLabel={t.paymentStatus}
+          />
+          {saleKind === 'PARTIAL' ? (
+            <View className="gap-1.5">
+              <MillimeInput
+                label={t.amountReceived}
+                value={partialAmount}
+                onChangeText={setPartialAmount}
+                suffix={t.currencySuffix}
+                error={amountError}
+              />
+              {!amountError && choice.kind === 'PARTIAL' && choice.amountMillimes ? (
+                <Text className="font-plex-semibold text-label text-debt">
+                  {formatMessage(t.remainingToKridi, {
+                    amount: formatMillimeAmount(total - getSalePaymentAmount(choice, total), language),
+                  })}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+        </>
+      ) : null}
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={saveLabel}
         accessibilityState={{ disabled: items.length === 0 }}
-        className={`ui-button-primary min-h-button-lg ${items.length === 0 ? 'ui-button-disabled' : ''}`}
+        className={`${saveButtonClass} min-h-button-lg ${items.length === 0 ? 'ui-button-disabled' : ''}`}
         onPress={save}
       >
-        <Text className="type-button text-surface">{t.save}</Text>
+        <Text numberOfLines={2} className="type-button text-center text-surface">
+          {saveLabel}
+        </Text>
       </Pressable>
     </>
   );
@@ -207,7 +283,12 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
     <ScreenScroll footer={footer} footerWithSafeArea>
       {error ? <InfoBanner tone="error" title={error} /> : null}
 
-      <CustomerPickerCard value={customerId} onChange={setCustomerId} />
+      <CustomerPickerCard
+        value={isWalkInCustomer(customerId) ? '' : customerId}
+        onChange={setCustomerId}
+        error={customerError}
+        walkInAllowed={(isNew && saleKind === 'PAID') || ticketIsWalkIn}
+      />
 
       <View className="flex-row gap-3">
         <BarcodeScanner

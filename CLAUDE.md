@@ -4,7 +4,7 @@ Monorepo for a Tunisian small-shop ecosystem. Today only the merchant app is bei
 
 - `shop-keeper-mobile/` — Expo + React Native + TypeScript + NativeWind + Redux Toolkit + expo-sqlite. Read `shop-keeper-mobile/AGENTS.md` first (Expo version rules, commands).
 - `shop-keeper-backend/` — Laravel skeleton, not used yet (see its own `CLAUDE.md`).
-- `specs/` — Spec Kit features: `001-kridi-credit-ledger`, `002-ledger-usability-dashboard` (done except 4 tasks), `003-ledger-visual-redesign` (current).
+- `specs/` — Spec Kit features: `001-kridi-credit-ledger`, `002-ledger-usability-dashboard` (done), `003-ledger-visual-redesign` (implemented; device validation pending).
 - `.specify/memory/constitution.md` — governing rules. Read it before any change.
 
 ## Current focus
@@ -39,9 +39,9 @@ npm run validate         # lint + typecheck + vitest — must pass before a task
 
 ## Known issues to clean up
 
-- `src/app/_layout.tsx` renders a second nested Redux `Provider` and imports an unused internal `BottomTabBar`.
-- `navigation/BottomTabs.tsx` and `TopBar.tsx` use inline `style` for safe-area padding (violates the constitution; tracked in 002 tasks).
-- Uncommitted change in `src/features/ledger/types/ticket.ts` — check with the owner before discarding.
+- The shell issues listed here before 003 (nested Redux `Provider`, unused `BottomTabBar` import, inline safe-area `style`) are fixed.
+- Uncommitted change in `src/features/ledger/types/ticket.ts` (one blank line) — check with the owner before discarding.
+- Unused Expo template packages (`expo-image`, `expo-symbols`, `@expo/ui`, `expo-glass-effect`, `expo-device`, `expo-web-browser`) are still installed. They are not imported by `src/`; remove them in a separate cleanup after checking `npx expo-doctor` (keep expo-linking, expo-constants, gesture-handler, reanimated, screens and safe-area-context: Expo Router uses them).
 
 ## Bigger picture
 

@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-24
 
-**Status**: In progress (implementation started 2026-10-24)
+**Status**: Implemented on 2026-10-25, pending device validation (T106, see [validation.md](./validation.md))
 
 **Input**: User description: "Apply the approved mobile design (Carnet Kridi design canvas) to the existing ledger screens built in 001 and 002. Introduce a small set of design tokens and reusable components, redesign the dashboard, ticket form, payment form, customer list, customer ledger, product form, ticket list and product catalog, and close the open 002 tasks. Behaviour, data and storage stay as they are: this is a presentation and usability feature, 100% local." Amendment 2026-10-24: "A ticket is set to paid, partially paid or unpaid when it is recorded, so a ticket covers any sale, not only kridi."
 

@@ -5,6 +5,8 @@ import { sumMillimeAmounts } from '@/lib/money';
 import { appendAuditEvent } from './auditService';
 import { createPendingChange, persistPendingChange } from './pendingChangeService';
 import { getTicketStatus } from './ticketService';
+import { listActiveSalePayments, voidPaymentRecords } from './paymentRecords';
+import { isWalkInCustomer } from '../constants';
 
 interface TicketRow {
   id: string;
@@ -158,20 +160,27 @@ export class TicketRepository {
     }
   }
 
+  /** Writes a new ticket with its audit event and operation-log entry. Call inside a transaction. */
+  insertTicketRecords(ticket: Ticket, db: SQLite.SQLiteDatabase): Ticket {
+    const customer = db.getFirstSync<{ is_active: number }>(
+      'SELECT is_active FROM customers WHERE id = ?;',
+      ticket.customerId,
+    );
+    if (!customer || customer.is_active !== 1) {
+      throw new Error('An active customer must be selected for a ticket.');
+    }
+    this.saveTicket(ticket);
+    appendAuditEvent({ entityType: 'ticket', entityId: ticket.id, action: 'create', before: null, after: { ...ticket } }, db);
+    persistPendingChange(createPendingChange('ticket', ticket.id, 'create', { ticket }), db);
+    return ticket;
+  }
+
+  /** Records a ticket without payment. Sales paid at the counter go through `recordSale`. */
   createTicket(ticket: Ticket): Ticket {
-    return this.transaction((db) => {
-      const customer = db.getFirstSync<{ is_active: number }>(
-        'SELECT is_active FROM customers WHERE id = ?;',
-        ticket.customerId,
-      );
-      if (!customer || customer.is_active !== 1) {
-        throw new Error('An active customer must be selected for a ticket.');
-      }
-      this.saveTicket(ticket);
-      appendAuditEvent({ entityType: 'ticket', entityId: ticket.id, action: 'create', before: null, after: { ...ticket } }, db);
-      persistPendingChange(createPendingChange('ticket', ticket.id, 'create', { ticket }), db);
-      return ticket;
-    });
+    if (isWalkInCustomer(ticket.customerId)) {
+      throw new Error('Walk-in tickets must be paid at sale.');
+    }
+    return this.transaction((db) => this.insertTicketRecords(ticket, db));
   }
 
   updateTicket(id: string, ticket: Ticket): Ticket {
@@ -184,6 +193,12 @@ export class TicketRepository {
         throw new Error('Voided tickets cannot be edited.');
       }
       const paid = this.totalPaid(id);
+      if (ticket.customerId !== before.customerId && isWalkInCustomer(ticket.customerId)) {
+        throw new Error('Walk-in tickets must be paid at sale.');
+      }
+      if (isWalkInCustomer(before.customerId) && ticket.totalMillimes !== paid) {
+        throw new Error('Walk-in tickets must stay fully paid.');
+      }
       if (ticket.customerId !== before.customerId && paid > 0) {
         throw new Error('A ticket with payments cannot be reassigned to another customer.');
       }
@@ -221,6 +236,10 @@ export class TicketRepository {
       this.database.runSync('UPDATE tickets SET voided_at = ?, updated_at = ? WHERE id = ?;', voidedAt, voidedAt, id);
       appendAuditEvent({ entityType: 'ticket', entityId: id, action: 'void', before: { ...before }, after: { ...after } }, db);
       persistPendingChange(createPendingChange('ticket', id, 'soft_delete', { before, after }), db);
+      // The money received at sale goes with the ticket, so today's sales and cash stay consistent (FR-020).
+      for (const payment of listActiveSalePayments(id, db)) {
+        voidPaymentRecords(payment, db, voidedAt);
+      }
       return after;
     });
   }

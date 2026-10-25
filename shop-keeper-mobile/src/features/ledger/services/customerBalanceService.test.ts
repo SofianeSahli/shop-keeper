@@ -3,7 +3,7 @@ import { Customer } from '../types/customer';
 import { Payment } from '../types/payment';
 import { Ticket } from '../types/ticket';
 import { WALK_IN_CUSTOMER_ID } from '../constants';
-import { getCustomerFilterCounts, summariseDebtors } from './customerBalanceService';
+import { buildCustomerLedgerEntries, getCustomerFilterCounts, summariseDebtors } from './customerBalanceService';
 
 vi.mock('@/lib/id', () => ({ createId: vi.fn(() => 'generated-id') }));
 
@@ -101,5 +101,38 @@ describe('summariseDebtors', () => {
 
   it('counts customers per filter', () => {
     expect(getCustomerFilterCounts(summaries)).toEqual({ owes: 2, upToDate: 2, all: 4 });
+  });
+});
+
+describe('buildCustomerLedgerEntries', () => {
+  const tickets = [
+    ticket('t1', 'ali', 7900, '2026-10-20T10:00:00.000Z'),
+    ticket('t2', 'ali', 5000, '2026-10-22T10:00:00.000Z'),
+    ticket('t3', 'ali', 1000, '2026-10-23T10:00:00.000Z', '2026-10-23T11:00:00.000Z'),
+    ticket('t4', 'sonia', 1000, '2026-10-24T10:00:00.000Z'),
+  ];
+  const payments = [
+    { ...payment('p1', 't1', 'ali', 3000, '2026-10-21T10:00:00.000Z'), paymentKind: 'TICKET' as const },
+    { ...payment('p2', 't2', 'ali', 5000, '2026-10-22T10:00:00.000Z'), paymentKind: 'AT_SALE' as const },
+    payment('p3', 't1', 'ali', 100, '2026-10-24T09:00:00.000Z', '2026-10-24T09:30:00.000Z'),
+  ];
+  const entries = buildCustomerLedgerEntries('ali', tickets, payments);
+
+  it('lists the customer tickets and payments newest first, payment before its ticket at the same instant', () => {
+    expect(entries.map((entry) => entry.id)).toEqual(['p2', 't2', 'p1', 't1']);
+  });
+
+  it('gives each ticket its remaining amount and each payment its ticket date and kind', () => {
+    expect(entries.find((entry) => entry.id === 't1')).toMatchObject({ type: 'ticket', remainingMillimes: 4900 });
+    expect(entries.find((entry) => entry.id === 't2')).toMatchObject({ type: 'ticket', remainingMillimes: 0 });
+    expect(entries.find((entry) => entry.id === 'p1')).toMatchObject({
+      type: 'payment',
+      ticketCreatedAt: '2026-10-20T10:00:00.000Z',
+    });
+    expect(entries.find((entry) => entry.id === 'p2')).toMatchObject({ type: 'payment', payment: { paymentKind: 'AT_SALE' } });
+  });
+
+  it('leaves out voided entries and other customers', () => {
+    expect(entries.some((entry) => ['t3', 'p3', 't4'].includes(entry.id))).toBe(false);
   });
 });

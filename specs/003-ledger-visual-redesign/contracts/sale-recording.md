@@ -54,9 +54,9 @@ Add the error rules to `errorMessages.ts` **before** the generic `/ticket|line|t
 |---|---|---|
 | `summariseDebtors(customers, tickets, payments)` | `customerBalanceService.ts` | `DebtorSummary[]` (see data-model §5), walk-in excluded, sorted by balance descending. |
 | `getCustomerFilterCounts(summaries)` | `customerBalanceService.ts` | `{ owes, upToDate, all }` |
-| `listDebtorSummaries()` / `listTopDebtors(limit = 3)` | `customerBalanceService.ts` | Repository-backed wrappers; `listTopDebtors` returns only balance > 0. |
+| `listDebtorSummaries()` / `listTopDebtors(limit = 3)` | `ledgerReadService.ts` | Repository-backed wrappers; `listTopDebtors` returns only balance > 0. |
 | `getDashboardSummary(date)` | `dashboardService.ts` | `+ todayTicketCount`, `+ openTicketCount`; outstanding computed in one pass. |
-| `getCustomerLedgerEntries(customerId)` | `customerBalanceService.ts` | Ticket and payment entries (incl. `ticketCreatedAt` for "sur ticket du …", `paymentKind` for "Payé à la vente"), newest first, ready for `groupByLocalDay`. |
+| `getCustomerLedgerEntries(customerId)` | `ledgerReadService.ts` (pure part: `buildCustomerLedgerEntries` in `customerBalanceService.ts`) | Ticket and payment entries (incl. `ticketCreatedAt` for "sur ticket du …", `paymentKind` for "Payé à la vente"), newest first, ready for `groupByLocalDay`. |
 
 Existing exports keep their signatures (`summariseCustomerBalances`, `getCustomerPaymentCandidates`), so existing tests stay green (SC-005).
 

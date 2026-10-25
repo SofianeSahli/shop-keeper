@@ -1,144 +1,203 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { getLedgerErrorMessage } from '@/i18n/errorMessages';
-import { formatMillimeInput } from '@/lib/money';
-import { refreshCompleted } from '../store/ledgerSlice';
-import { LedgerPage } from '../components/LedgerPage';
-import { FeedbackState } from '../components/feedback/FeedbackState';
+import { formatMessage } from '@/i18n/format';
+import { formatMillimeAmount, formatMillimeInput } from '@/lib/money';
+import { InfoBanner, ScreenScroll } from '@/components/ui';
+import { clearFormDirty, refreshCompleted, setFormDirty } from '../store/ledgerSlice';
 import { PaymentForm } from '../components/payment/PaymentForm';
-import { getCustomerPaymentCandidates } from '../services/customerBalanceService';
+import { PaymentTicketSheet, PayableTicket } from '../components/payment/PaymentTicketSheet';
+import { PaymentCustomerSheet } from '../components/payment/PaymentCustomerSheet';
+import { ConfirmAction } from '../components/feedback/ConfirmAction';
+import { parseMillimes } from '../components/forms/MillimeInput';
+import { getCustomerPaymentCandidates, summariseDebtors, sumActivePaymentsByTicket } from '../services/customerBalanceService';
 import { listCustomers } from '../services/customerService';
 import { paymentRepository } from '../services/paymentRepository';
 import { ticketRepository } from '../services/ticketRepository';
+import { isWalkInCustomer } from '../constants';
+import { useDirtyFormGuard } from '../hooks/useDirtyFormGuard';
 import { Customer } from '../types/customer';
 import { Payment } from '../types/payment';
 import { Ticket } from '../types/ticket';
-import { parseMillimes } from '../components/forms/MillimeInput';
-import { ConfirmAction } from '../components/feedback/ConfirmAction';
-import { useDirtyFormGuard } from '../hooks/useDirtyFormGuard';
 
 export function PaymentFormScreen() {
   const { id, customerId } = useLocalSearchParams<{ id?: string; customerId?: string }>();
   return <PaymentFormPage key={id ?? customerId ?? 'new'} id={id} initialCustomerId={customerId} />;
 }
 
+function parseAmountOrNull(value: string): number | null {
+  try {
+    return parseMillimes(value);
+  } catch {
+    return null;
+  }
+}
+
+function loadInitial(id: string | undefined) {
+  const customers = listCustomers('', true);
+  const tickets = ticketRepository.listTickets();
+  const payments = paymentRepository.listPayments();
+  const payment = id ? paymentRepository.getPayment(id) : null;
+  return { customers, tickets, payments, payment };
+}
+
 function PaymentFormPage({ id, initialCustomerId }: { id?: string; initialCustomerId?: string }) {
-  const { t } = useLedgerTranslations();
+  const { t, language } = useLedgerTranslations();
   const dispatch = useDispatch();
   useDirtyFormGuard();
+
   const [initial] = useState(() => {
     try {
-      const availableCustomers = listCustomers('', true);
-      const activeTickets = ticketRepository.listTickets();
-      const activePayments = paymentRepository.listPayments();
-      const payment = id ? paymentRepository.getPayment(id) : null;
-      if (id && (!payment || payment.voidedAt)) {
-        return {
-          customers: availableCustomers,
-          tickets: activeTickets,
-          payments: activePayments,
-          payment: null,
-          error: t.loadFailed,
-          initialTicketId: '',
-        };
-      }
-      const customerId = payment?.customerId ?? initialCustomerId ?? availableCustomers[0]?.id ?? '';
-      const candidates = getCustomerPaymentCandidates(customerId, activeTickets, activePayments);
-      return {
-        customers: availableCustomers,
-        tickets: activeTickets,
-        payments: activePayments,
-        payment,
-        error: '',
-        initialTicketId: payment?.ticketId ?? candidates[0]?.id ?? '',
-      };
+      const data = loadInitial(id);
+      const missing = Boolean(id) && (!data.payment || data.payment.voidedAt);
+      return { ...data, error: missing ? t.loadFailed : '' };
     } catch (cause) {
       return {
         customers: [] as Customer[],
         tickets: [] as Ticket[],
         payments: [] as Payment[],
-        payment: null,
+        payment: null as Payment | null,
         error: getLedgerErrorMessage(cause, t, t.loadFailed),
-        initialTicketId: '',
       };
     }
   });
-  const [customers] = useState<Customer[]>(initial.customers);
-  const [tickets] = useState<Ticket[]>(initial.tickets);
-  const [payments] = useState<Payment[]>(initial.payments);
-  const [customerId, setCustomerId] = useState(initial.payment?.customerId ?? customers[0]?.id ?? '');
-  const [ticketId, setTicketId] = useState(initial.initialTicketId ?? '');
-  const [amount, setAmount] = useState(
-    initial.payment ? formatMillimeInput(initial.payment.amountMillimes) : '',
+  const editedPayment = initial.payment && !initial.payment.voidedAt ? initial.payment : null;
+  const lockedWalkInPayment = Boolean(editedPayment && editedPayment.paymentKind === 'AT_SALE' && isWalkInCustomer(editedPayment.customerId));
+
+  // Balances ignore the payment being edited, so its own amount is available again.
+  const otherPayments = useMemo(
+    () => (editedPayment ? initial.payments.filter((payment) => payment.id !== editedPayment.id) : initial.payments),
+    [editedPayment, initial.payments],
   );
+  const debtors = useMemo(
+    () => summariseDebtors(initial.customers, initial.tickets, otherPayments).filter((debtor) => debtor.balanceMillimes > 0),
+    [initial.customers, initial.tickets, otherPayments],
+  );
+  const paidByTicket = useMemo(() => sumActivePaymentsByTicket(otherPayments), [otherPayments]);
+
+  const payableFor = (customerId: string): PayableTicket[] => {
+    const candidates = getCustomerPaymentCandidates(customerId, initial.tickets, otherPayments);
+    const edited = editedPayment ? initial.tickets.find((ticket) => ticket.id === editedPayment.ticketId) : undefined;
+    const list = edited && !candidates.some((ticket) => ticket.id === edited.id) ? [edited, ...candidates] : candidates;
+    return list.map((ticket) => ({ ticket, remainingMillimes: ticket.totalMillimes - (paidByTicket.get(ticket.id) ?? 0) }));
+  };
+
+  const startCustomer = editedPayment?.customerId ?? initialCustomerId ?? '';
+  const startTicket = editedPayment?.ticketId ?? payableFor(startCustomer)[0]?.ticket.id ?? '';
+  const startAmount = editedPayment
+    ? formatMillimeInput(editedPayment.amountMillimes)
+    : (() => {
+        const first = payableFor(startCustomer)[0];
+        return first ? formatMillimeInput(first.remainingMillimes) : '';
+      })();
+
+  const [customerId, setCustomerId] = useState(startCustomer);
+  const [ticketId, setTicketId] = useState(startTicket);
+  const [amountText, setAmountText] = useState(startAmount);
+  const [customerSheet, setCustomerSheet] = useState(!editedPayment && !startCustomer && !initial.error);
+  const [ticketSheet, setTicketSheet] = useState(false);
   const [error, setError] = useState(initial.error);
 
-  const candidateTickets = useMemo(() => {
-    const paymentsWithoutEdited = id ? payments.filter((payment) => payment.id !== id) : payments;
-    const candidates = getCustomerPaymentCandidates(customerId, tickets, paymentsWithoutEdited);
-    if (id && ticketId && !candidates.some((ticket) => ticket.id === ticketId)) {
-      const selected = tickets.find((ticket) => ticket.id === ticketId);
-      if (selected) return [selected, ...candidates];
-    }
-    return candidates;
-  }, [customerId, id, payments, ticketId, tickets]);
+  const payable = payableFor(customerId);
+  const selected = payable.find((item) => item.ticket.id === ticketId) ?? null;
+  const customer = debtors.find((debtor) => debtor.customerId === customerId) ?? null;
+  const amountMillimes = parseAmountOrNull(amountText);
+  const amountError =
+    amountText !== '' && amountMillimes === null
+      ? t.invalidAmount
+      : selected && amountMillimes !== null && amountMillimes > selected.remainingMillimes
+        ? t.paymentExceedsBalance
+        : undefined;
 
-  function changeCustomer(nextId: string): void {
+  useEffect(() => {
+    dispatch(setFormDirty({ section: 'payments', isDirty: amountText !== startAmount || customerId !== startCustomer }));
+  }, [amountText, customerId, dispatch, startAmount, startCustomer]);
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearFormDirty());
+    };
+  }, [dispatch]);
+
+  function chooseCustomer(nextId: string): void {
     setCustomerId(nextId);
-    const paymentsWithoutEdited = id ? payments.filter((payment) => payment.id !== id) : payments;
-    const candidates = getCustomerPaymentCandidates(nextId, tickets, paymentsWithoutEdited);
-    setTicketId(candidates[0]?.id ?? '');
+    setCustomerSheet(false);
+    const first = payableFor(nextId)[0];
+    setTicketId(first?.ticket.id ?? '');
+    setAmountText(first ? formatMillimeInput(first.remainingMillimes) : '');
+  }
+
+  function chooseTicket(nextId: string): void {
+    setTicketSheet(false);
+    setTicketId(nextId);
+    const next = payable.find((item) => item.ticket.id === nextId);
+    if (next) setAmountText(formatMillimeInput(next.remainingMillimes));
+  }
+
+  function finish(): void {
+    dispatch(clearFormDirty());
+    dispatch(refreshCompleted());
+    router.replace('/ledger/payments');
   }
 
   function save(): void {
     try {
       if (!ticketId) throw new Error(t.selectTicket);
-      const input = { ticketId, customerId, amountMillimes: parseMillimes(amount) };
-      if (id) paymentRepository.updatePayment(id, input);
+      const input = { ticketId, customerId, amountMillimes: parseMillimes(amountText) };
+      if (editedPayment) paymentRepository.updatePayment(editedPayment.id, input);
       else paymentRepository.createPayment(input);
-      dispatch(refreshCompleted());
-      router.replace('/ledger/payments');
+      finish();
     } catch (cause) {
       setError(getLedgerErrorMessage(cause, t, t.saveFailed));
     }
   }
 
   function voidPayment(): void {
-    if (!id) return;
+    if (!editedPayment) return;
     try {
-      paymentRepository.voidPayment(id);
-      dispatch(refreshCompleted());
-      router.replace('/ledger/payments');
+      paymentRepository.voidPayment(editedPayment.id);
+      finish();
     } catch (cause) {
       setError(getLedgerErrorMessage(cause, t, t.saveFailed));
     }
   }
 
+  const canSave = Boolean(selected) && amountMillimes !== null && !amountError && !lockedWalkInPayment;
+  const footer = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !canSave }}
+      disabled={!canSave}
+      className={`ui-button-paid min-h-button-lg ${canSave ? '' : 'ui-button-disabled'}`}
+      onPress={save}
+    >
+      <Text className="type-button text-surface">
+        {amountMillimes !== null ? formatMessage(t.saveAmount, { amount: formatMillimeAmount(amountMillimes, language) }) : t.save}
+      </Text>
+    </Pressable>
+  );
+
   return (
-    <LedgerPage title={id ? t.editPayment : t.createPayment}>
-      {error ? <FeedbackState kind="error" message={error} /> : null}
+    <ScreenScroll footer={footer} footerWithSafeArea>
+      {error ? <InfoBanner tone="error" title={error} /> : null}
+      {lockedWalkInPayment ? <InfoBanner tone="warning" title={t.walkInLocked} /> : null}
       <PaymentForm
-        customers={customers}
-        tickets={candidateTickets}
-        selectedCustomerId={customerId}
-        selectedTicketId={ticketId}
-        amount={amount}
-        customerLabel={t.chooseCustomer}
-        ticketLabel={t.selectTicket}
-        amountLabel={t.paymentAmount}
-        cancelLabel={t.cancel}
-        openTicketSelectionInitially={!id && Boolean(initialCustomerId)}
-        onCustomerChange={changeCustomer}
-        onTicketChange={setTicketId}
-        onAmountChange={setAmount}
+        customer={customer}
+        selected={selected}
+        hasPayableTickets={payable.length > 0}
+        amountText={amountText}
+        amountMillimes={amountMillimes}
+        amountError={amountError}
+        canChangeCustomer={!editedPayment}
+        onChangeCustomer={() => setCustomerSheet(true)}
+        onChangeTicket={() => setTicketSheet(true)}
+        onAmountTextChange={setAmountText}
+        onQuickAmount={(value) => setAmountText(formatMillimeInput(value))}
       />
-      <Pressable accessibilityRole="button" className="ledger-primary-button" onPress={save}>
-        <Text className="font-semibold text-white">{t.save}</Text>
-      </Pressable>
-      {id && initial.payment ? (
+      {editedPayment && !lockedWalkInPayment ? (
         <ConfirmAction
           buttonLabel={t.voidPayment}
           title={t.voidPayment}
@@ -148,6 +207,21 @@ function PaymentFormPage({ id, initialCustomerId }: { id?: string; initialCustom
           onConfirm={voidPayment}
         />
       ) : null}
-    </LedgerPage>
+
+      <PaymentCustomerSheet
+        visible={customerSheet}
+        debtors={debtors}
+        selectedCustomerId={customerId}
+        onSelect={chooseCustomer}
+        onClose={() => setCustomerSheet(false)}
+      />
+      <PaymentTicketSheet
+        visible={ticketSheet}
+        tickets={payable}
+        selectedTicketId={ticketId}
+        onConfirm={chooseTicket}
+        onClose={() => setTicketSheet(false)}
+      />
+    </ScreenScroll>
   );
 }

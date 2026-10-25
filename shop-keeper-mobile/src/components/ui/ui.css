@@ -95,6 +95,19 @@
     @apply shadow-lg shadow-ink/30;
   }
 
+  /* Inline barcode viewfinder (product form) */
+  .ui-viewfinder {
+    @apply h-[200px] items-center justify-center overflow-hidden rounded-tile bg-viewfinder;
+  }
+
+  .ui-viewfinder-corner {
+    @apply absolute h-7 w-7 border-surface;
+  }
+
+  .ui-viewfinder-line {
+    @apply absolute inset-x-8 top-1/2 h-0.5 rounded-full bg-scan-line;
+  }
+
   /* Amounts keep left-to-right digit order inside right-to-left layouts. */
   .ui-ltr {
     direction: ltr;

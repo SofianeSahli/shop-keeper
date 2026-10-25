@@ -3,6 +3,11 @@ import { getTranslations } from './index';
 type TranslationKey = keyof ReturnType<typeof getTranslations>;
 
 const errorRules: [RegExp, TranslationKey][] = [
+  // Sale and walk-in rules (spec 003) come first: their messages also mention amounts and tickets.
+  [/walk-in/i, 'walkInLocked'],
+  [/credit needs a customer/i, 'kridiNeedsCustomer'],
+  [/partial amount equals the total/i, 'partialEqualsTotal'],
+  [/partial amount/i, 'partialAmountInvalid'],
   [/exceeds the outstanding|already fully paid|cannot be added to a paid/i, 'paymentExceedsBalance'],
   [/already uses this barcode/i, 'duplicateBarcode'],
   [/barcode/i, 'invalidBarcode'],

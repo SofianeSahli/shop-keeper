@@ -1,5 +1,5 @@
 import { listCustomers } from './customerService';
-import { DebtorSummary, summariseDebtors } from './customerBalanceService';
+import { buildCustomerLedgerEntries, CustomerLedgerEntry, DebtorSummary, summariseDebtors } from './customerBalanceService';
 import { paymentRepository } from './paymentRepository';
 import { ticketRepository } from './ticketRepository';
 
@@ -13,4 +13,12 @@ export function listTopDebtors(limit = 3): DebtorSummary[] {
   return listDebtorSummaries()
     .filter((summary) => summary.balanceMillimes > 0)
     .slice(0, limit);
+}
+
+export function getCustomerLedgerEntries(customerId: string): CustomerLedgerEntry[] {
+  return buildCustomerLedgerEntries(
+    customerId,
+    ticketRepository.listTickets(customerId),
+    paymentRepository.listPayments(customerId),
+  );
 }

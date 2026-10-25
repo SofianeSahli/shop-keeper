@@ -4,19 +4,26 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { getLedgerErrorMessage } from '@/i18n/errorMessages';
-import { formatMillimeInput } from '@/lib/money';
-import { createProduct, getProduct, listProducts, updateProduct } from '../services/productService';
-import { LedgerPage } from '../components/LedgerPage';
+import { formatMillimeAmount, formatMillimeInput } from '@/lib/money';
+import { Icon, InfoBanner, ScreenScroll } from '@/components/ui';
+import { createProduct, getProduct, listProducts, removeProduct, updateProduct } from '../services/productService';
 import { LedgerField } from '../components/forms/LedgerField';
 import { MillimeInput, parseMillimes } from '../components/forms/MillimeInput';
-import { FeedbackState } from '../components/feedback/FeedbackState';
+import { ConfirmAction } from '../components/feedback/ConfirmAction';
 import { BarcodeScanner } from '../components/ticket/BarcodeScanner';
 import { clearFormDirty, refreshCompleted, setFormDirty } from '../store/ledgerSlice';
 import { useDirtyFormGuard } from '../hooks/useDirtyFormGuard';
+import { Product } from '../types/product';
 
 export function ProductFormScreen() {
   const { id, barcode } = useLocalSearchParams<{ id?: string; barcode?: string }>();
   return <ProductForm key={id ?? `new-${barcode ?? ''}`} id={id} initialBarcode={barcode} />;
+}
+
+function findDuplicate(code: string, ownId: string | undefined): Product | null {
+  const trimmed = code.trim();
+  if (!trimmed) return null;
+  return listProducts().find((product) => product.id !== ownId && product.isActive && product.barcode?.trim() === trimmed) ?? null;
 }
 
 function ProductForm({ id, initialBarcode }: { id?: string; initialBarcode?: string }) {
@@ -31,21 +38,19 @@ function ProductForm({ id, initialBarcode }: { id?: string; initialBarcode?: str
       return { product: null, error: getLedgerErrorMessage(cause, t, t.loadFailed) };
     }
   });
+  const startBarcode = initial.product?.barcode ?? initialBarcode ?? '';
+  const startPrice = initial.product ? formatMillimeInput(initial.product.sellingPriceMillimes) : '';
   const [name, setName] = useState(initial.product?.name ?? '');
-  const [barcode, setBarcode] = useState(initial.product?.barcode ?? initialBarcode ?? '');
-  const [duplicateProductId, setDuplicateProductId] = useState<string | null>(null);
-  const [price, setPrice] = useState(
-    initial.product ? formatMillimeInput(initial.product.sellingPriceMillimes) : '',
-  );
+  const [barcode, setBarcode] = useState(startBarcode);
+  const [duplicate, setDuplicate] = useState<Product | null>(() => findDuplicate(startBarcode, id));
+  const [price, setPrice] = useState(startPrice);
+  const [scannerArmed, setScannerArmed] = useState(!startBarcode);
   const [error, setError] = useState(initial.error);
 
   useEffect(() => {
-    const hasChanges =
-      name !== (initial.product?.name ?? '') ||
-      barcode !== (initial.product?.barcode ?? initialBarcode ?? '') ||
-      price !== (initial.product ? formatMillimeInput(initial.product.sellingPriceMillimes) : '');
-    dispatch(setFormDirty({ section: 'products', isDirty: hasChanges && !error }));
-  }, [barcode, dispatch, error, initial.product, initialBarcode, name, price]);
+    const hasChanges = name !== (initial.product?.name ?? '') || barcode !== startBarcode || price !== startPrice;
+    dispatch(setFormDirty({ section: 'products', isDirty: hasChanges && !initial.error }));
+  }, [barcode, dispatch, initial.error, initial.product, name, price, startBarcode, startPrice]);
 
   useEffect(() => {
     return () => {
@@ -54,40 +59,105 @@ function ProductForm({ id, initialBarcode }: { id?: string; initialBarcode?: str
   }, [dispatch]);
 
   function updateBarcodeValue(nextValue: string): void {
-    const trimmed = nextValue.trim();
     setBarcode(nextValue);
-    if (!trimmed) {
-      setDuplicateProductId(null);
-      return;
-    }
-
-    const match = listProducts().find(
-      (product) => product.id !== id && product.isActive && product.barcode?.trim() === trimmed,
-    );
-    setDuplicateProductId(match?.id ?? null);
-    if (match) {
-      setError(t.duplicateBarcode);
-    } else if (error) {
-      setError('');
+    try {
+      setDuplicate(findDuplicate(nextValue, id));
+    } catch (cause) {
+      setError(getLedgerErrorMessage(cause, t, t.loadFailed));
     }
   }
 
+  function finish(): void {
+    dispatch(clearFormDirty());
+    dispatch(refreshCompleted());
+    router.replace('/ledger/products');
+  }
+
   function save(): void {
+    if (duplicate) return;
     try {
       const input = { name, barcode: barcode.trim() || null, sellingPriceMillimes: parseMillimes(price) };
       if (id) updateProduct(id, input);
       else createProduct(input);
-      dispatch(clearFormDirty());
-      dispatch(refreshCompleted());
-      router.replace('/ledger/products');
+      finish();
     } catch (cause) {
       setError(getLedgerErrorMessage(cause, t, t.saveFailed));
     }
   }
 
+  function remove(): void {
+    if (!id) return;
+    try {
+      removeProduct(id);
+      finish();
+    } catch (cause) {
+      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
+    }
+  }
+
+  const isNewCode = !duplicate && barcode.trim() !== '' && barcode.trim() !== (initial.product?.barcode ?? '');
+  const footer = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(duplicate) }}
+      disabled={Boolean(duplicate)}
+      className={`ui-button-primary min-h-button-lg ${duplicate ? 'ui-button-disabled' : ''}`}
+      onPress={save}
+    >
+      <Text className="type-button text-surface">{t.saveProduct}</Text>
+    </Pressable>
+  );
+
   return (
-    <LedgerPage title={id ? t.editProduct : t.newProduct}>
-      {error ? <FeedbackState kind="error" message={error} /> : null}
+    <ScreenScroll footer={footer} footerWithSafeArea>
+      {error ? <InfoBanner tone="error" title={error} /> : null}
+
+      <BarcodeScanner
+        mode="inline"
+        armed={scannerArmed}
+        scanLabel={t.scanBarcode}
+        permissionLabel={t.cameraAccess}
+        closeLabel={t.close}
+        onScanned={(value) => {
+          setScannerArmed(false);
+          updateBarcodeValue(value);
+        }}
+      />
+
+      <LedgerField
+        label={t.barcodeOptional}
+        value={barcode}
+        onChangeText={updateBarcodeValue}
+        autoCapitalize="none"
+        textAlign="left"
+        hint={duplicate || isNewCode ? undefined : t.noCameraHint}
+        accessory={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t.rescan}
+            className="h-[52px] w-[52px] items-center justify-center rounded-control border border-line-strong bg-surface active:bg-muted"
+            onPress={() => setScannerArmed(true)}
+          >
+            <Icon name="scan-outline" className="text-primary" />
+          </Pressable>
+        }
+      />
+      {duplicate ? (
+        <InfoBanner
+          tone="warning"
+          title={t.codeExists}
+          text={`${duplicate.name} · ${formatMillimeAmount(duplicate.sellingPriceMillimes, language)}`}
+          actionLabel={t.openThisProduct}
+          onAction={() => router.push({ pathname: '/ledger/product-form', params: { id: duplicate.id } })}
+        />
+      ) : null}
+      {isNewCode ? (
+        <View accessibilityLiveRegion="polite" className="flex-row items-center gap-2">
+          <Icon name="checkmark-circle" size={18} className="text-paid" />
+          <Text className="font-plex-semibold text-label text-paid">{t.newCodeReady}</Text>
+        </View>
+      ) : null}
+
       <LedgerField
         label={t.productName}
         value={name}
@@ -95,37 +165,18 @@ function ProductForm({ id, initialBarcode }: { id?: string; initialBarcode?: str
         autoCapitalize="sentences"
         textAlign={language === 'ar' ? 'right' : 'left'}
       />
-      <BarcodeScanner
-        scanLabel={t.scanBarcode}
-        permissionLabel={t.cameraAccess}
-        closeLabel={t.close}
-        onScanned={(value) => {
-          updateBarcodeValue(value);
-        }}
-      />
-      <LedgerField
-        label={t.barcode}
-        value={barcode}
-        onChangeText={updateBarcodeValue}
-        autoCapitalize="none"
-        textAlign="left"
-      />
-      {duplicateProductId ? (
-        <View className="gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
-          <Text className="text-sm font-semibold text-amber-900">{t.duplicateBarcode}</Text>
-          <Pressable
-            accessibilityRole="button"
-            className="ledger-touch-target rounded-lg bg-amber-700 px-3 py-2"
-            onPress={() => router.push({ pathname: '/ledger/product-form', params: { id: duplicateProductId } })}
-          >
-            <Text className="text-center font-semibold text-white">{t.openProduct}</Text>
-          </Pressable>
-        </View>
+      <MillimeInput label={t.salePrice} value={price} onChangeText={setPrice} suffix={t.currencySuffix} hint={t.millimesHint} />
+
+      {id && initial.product?.isActive ? (
+        <ConfirmAction
+          buttonLabel={t.removeProduct}
+          title={t.confirmRemoval}
+          message={t.removeProductMessage}
+          confirmLabel={t.remove}
+          cancelLabel={t.cancel}
+          onConfirm={remove}
+        />
       ) : null}
-      <MillimeInput label={t.price} value={price} onChangeText={setPrice} />
-      <Pressable accessibilityRole="button" className="ledger-primary-button" onPress={save}>
-        <Text className="font-semibold text-white">{t.save}</Text>
-      </Pressable>
-    </LedgerPage>
+    </ScreenScroll>
   );
 }
