@@ -25,6 +25,7 @@ interface AuditRow {
   created_at: string;
 }
 
+
 export function appendAuditEvent(
   event: Omit<LedgerAuditEvent, 'id' | 'createdAt'>,
   db: SQLite.SQLiteDatabase = getLedgerDatabase(),
