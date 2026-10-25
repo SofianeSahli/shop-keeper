@@ -20,6 +20,7 @@ export interface Ticket {
   status: TicketStatus;
   voidedAt: string | null;
   lines: TicketLine[];
+  
 }
 
 export interface TicketDraftItem {
