@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   assertValidMillimeAmount,
   formatLedgerDate,
+  formatLongDay,
   formatMillimeAmount,
   formatMillimeInput,
+  formatMillimeNumber,
+  formatShortDate,
   isValidMillimeAmount,
   sumMillimeAmounts,
 } from './money';
@@ -22,12 +25,31 @@ describe('millime utilities', () => {
   });
 
   it('formats money, input values and dates for the selected locale', () => {
-    expect(formatMillimeInput(1234)).toBe('1.234');
+    expect(formatMillimeInput(1234)).toBe('1,234');
     expect(formatMillimeAmount(1234, 'fr')).toContain('1');
-    expect(formatMillimeAmount(1234, 'ar')).not.toBe(formatMillimeAmount(1234, 'fr'));
     expect(formatLedgerDate('2025-03-04T12:00:00.000Z', 'fr')).toContain('2025');
     expect(formatLedgerDate('2025-03-04T12:00:00.000Z', 'ar')).not.toBe(
       formatLedgerDate('2025-03-04T12:00:00.000Z', 'fr'),
     );
+  });
+
+  it('writes numbers the same way in every language; only the currency label changes (FR-022)', () => {
+    const grouped = '1 284 500,500';
+    expect(formatMillimeNumber(1_284_500_500)).toBe(grouped);
+    expect(formatMillimeAmount(1_284_500_500, 'fr')).toBe(`${grouped} DT`);
+    expect(formatMillimeAmount(1_284_500_500, 'en')).toBe(`${grouped} DT`);
+    expect(formatMillimeAmount(1_284_500_500, 'ar')).toBe(`${grouped} د.ت`);
+    expect(formatMillimeAmount(-20_000, 'ar')).toBe('-20,000 د.ت');
+  });
+
+  it('keeps Latin digits in Arabic dates', () => {
+    for (const formatted of [
+      formatLedgerDate('2026-10-24T12:00:00.000Z', 'ar'),
+      formatShortDate('2026-10-24T12:00:00.000Z', 'ar'),
+      formatLongDay('2026-10-24T12:00:00.000Z', 'ar'),
+    ]) {
+      expect(formatted).toMatch(/24/);
+      expect(formatted).not.toMatch(/[٠-٩۰-۹]/);
+    }
   });
 });

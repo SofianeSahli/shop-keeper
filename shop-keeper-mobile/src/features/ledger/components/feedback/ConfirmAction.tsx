@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
+import { Icon, IconName } from '@/components/ui';
 
 interface ConfirmActionProps {
   buttonLabel: string;
@@ -8,8 +9,10 @@ interface ConfirmActionProps {
   confirmLabel: string;
   cancelLabel: string;
   onConfirm: () => void;
+  icon?: IconName;
 }
 
+/** Destructive action behind a confirmation dialog; lives on detail and form screens, never in list rows. */
 export function ConfirmAction({
   buttonLabel,
   title,
@@ -17,39 +20,39 @@ export function ConfirmAction({
   confirmLabel,
   cancelLabel,
   onConfirm,
+  icon = 'trash-outline',
 }: ConfirmActionProps) {
   const [visible, setVisible] = useState(false);
   return (
     <>
       <Pressable
         accessibilityRole="button"
-        className="ledger-touch-target rounded-lg border border-red-300 px-3 py-2"
+        className="ui-button border border-debt-line bg-surface active:bg-debt-soft"
         onPress={() => setVisible(true)}
       >
-        <Text className="font-semibold text-red-700">{buttonLabel}</Text>
+        <Icon name={icon} size={20} className="text-debt" />
+        <Text className="type-button text-debt">{buttonLabel}</Text>
       </Pressable>
-      <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
-        <View className="flex-1 justify-center bg-black/50 p-6">
-          <View className="gap-4 rounded-2xl bg-white p-5">
-            <Text className="text-lg font-bold text-slate-900">{title}</Text>
-            <Text className="text-base text-slate-700">{message}</Text>
+      <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setVisible(false)}>
+        <View className="flex-1 justify-center bg-scrim p-6">
+          <View accessibilityViewIsModal className="gap-4 rounded-card bg-surface p-5">
+            <Text accessibilityRole="header" className="type-title">
+              {title}
+            </Text>
+            <Text className="type-body text-ink-2">{message}</Text>
             <View className="flex-row justify-end gap-3">
-              <Pressable
-                accessibilityRole="button"
-                className="ledger-touch-target rounded-lg px-4 py-3"
-                onPress={() => setVisible(false)}
-              >
-                <Text className="font-semibold text-slate-700">{cancelLabel}</Text>
+              <Pressable accessibilityRole="button" className="ui-button-outline" onPress={() => setVisible(false)}>
+                <Text className="type-button text-ink">{cancelLabel}</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                className="ledger-touch-target rounded-lg bg-red-700 px-4 py-3"
+                className="ui-button bg-debt"
                 onPress={() => {
                   setVisible(false);
                   onConfirm();
                 }}
               >
-                <Text className="font-semibold text-white">{confirmLabel}</Text>
+                <Text className="type-button text-surface">{confirmLabel}</Text>
               </Pressable>
             </View>
           </View>

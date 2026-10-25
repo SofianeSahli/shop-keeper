@@ -156,7 +156,7 @@ description: "Task list for the ledger usability dashboard feature"
 
 Not part of the completion of 002. Confirm each is done, or move it to the next spec.
 
-- [ ] Guard the Android system back action on forms with unsaved changes so it asks for the same confirmation as the on-screen back button (spec assumption).
-- [ ] Remove inline style objects from the shell's safe-area handling and use `SafeAreaView` with `edges` and NativeWind classes instead (constitution: no inline style objects).
-- [ ] Hide the shell on the language-selection entry route by returning no active feature for routes outside a registered feature.
-- [ ] Confirm the registry routes match the generated typed routes under `/ledger/...`.
+- [X] Guard the Android system back action on forms with unsaved changes so it asks for the same confirmation as the on-screen back button (spec assumption). *(Done in 003, T043: `useDirtyFormGuard`.)*
+- [X] Remove inline style objects from the shell's safe-area handling and use `SafeAreaView` with `edges` and NativeWind classes instead (constitution: no inline style objects). *(Done in 003, T040/T042: NativeWind `pt-safe` / `pb-safe` classes.)*
+- [X] Hide the shell on the language-selection entry route by returning no active feature for routes outside a registered feature. *(Done in 003, T037: `getActiveFeature` returns `null`; the language entry screen no longer exists, Home is `/`.)*
+- [X] Confirm the registry routes match the generated typed routes under `/ledger/...`. *(Done in 003, T037/T038: leading slashes, typecheck and `features.test.ts`.)*

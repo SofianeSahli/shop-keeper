@@ -2,8 +2,74 @@
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
+  // Light palette only (dark mode is out of scope for 003). `class` stops NativeWind from following the
+  // system color scheme, which throws when the scheme changes while dark mode is media-based.
+  darkMode: 'class',
   theme: {
-    extend: {},
+    // Design tokens only (specs/003-ledger-visual-redesign/design-reference.md §1). Replacing the
+    // default palette means a non-token color class simply does not exist (spec SC-001).
+    colors: {
+      transparent: 'transparent',
+      current: 'currentColor',
+      ground: '#F3F5F4',
+      surface: '#FFFFFF',
+      ink: '#0F1F1A',
+      'ink-2': '#4A5A54',
+      line: '#DCE3E0',
+      'line-soft': '#EDF1EF',
+      'line-strong': '#C9D3CF',
+      muted: '#EEF1F0',
+      primary: '#164E9C',
+      'primary-soft': '#DCE8F7',
+      'primary-faint': '#EEF4FC',
+      debt: '#9A3412',
+      'debt-strong': '#7C2D12',
+      'debt-soft': '#FDEBDD',
+      'debt-line': '#F6CFAE',
+      paid: '#0F5F57',
+      'paid-soft': '#DDF3EE',
+      partial: '#854D0E',
+      'partial-soft': '#FEF3C7',
+      'partial-line': '#F3D27A',
+      'warn-strong': '#713F12',
+      scrim: 'rgba(15,31,26,0.45)',
+      viewfinder: '#0B1411',
+      'scan-line': '#F59E0B',
+    },
+    extend: {
+      borderRadius: {
+        card: '18px',
+        tile: '20px',
+        control: '14px',
+        'control-lg': '16px',
+      },
+      fontFamily: {
+        plex: ['IBMPlexSansArabic_400Regular'],
+        'plex-medium': ['IBMPlexSansArabic_500Medium'],
+        'plex-semibold': ['IBMPlexSansArabic_600SemiBold'],
+        'plex-bold': ['IBMPlexSansArabic_700Bold'],
+      },
+      fontSize: {
+        'display-lg': ['34px', '42px'],
+        display: ['30px', '38px'],
+        title: ['19px', '26px'],
+        heading: ['16px', '22px'],
+        body: ['15px', '21px'],
+        label: ['13px', '18px'],
+        caption: ['12.5px', '17px'],
+        tab: ['12px', '16px'],
+      },
+      minHeight: {
+        touch: '44px',
+        button: '52px',
+        'button-lg': '56px',
+        row: '60px',
+      },
+      minWidth: {
+        touch: '44px',
+        button: '52px',
+      },
+    },
   },
   plugins: [],
 };

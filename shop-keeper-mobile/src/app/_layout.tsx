@@ -1,102 +1,114 @@
 import { Provider, useDispatch } from 'react-redux';
-import { Stack ,usePathname } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Stack } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  IBMPlexSansArabic_400Regular,
+  IBMPlexSansArabic_500Medium,
+  IBMPlexSansArabic_600SemiBold,
+  IBMPlexSansArabic_700Bold,
+  useFonts,
+} from '@expo-google-fonts/ibm-plex-sans-arabic';
 import { store } from '@/store';
 import { openLedgerDatabase } from '@/db';
 import { getSavedLanguage } from '@/i18n/languageStorage';
 import { getTextDirection } from '@/i18n';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { languageChanged } from '@/features/ledger/store/ledgerSlice';
-import '../global.css';
 import { TopBar } from '@/navigation/TopBar';
-import { BottomTabBar } from 'expo-router/build/react-navigation/bottom-tabs';
 import { BottomTabs } from '@/navigation/BottomTabs';
+import { TopBarProvider } from '@/navigation/TopBarContext';
+import '../global.css';
+import '@/components/ui/interop';
 
 export default function RootLayout() {
   return (
-    <Provider store={store}>
-      <RootContent />
-    </Provider>
+    <SafeAreaProvider>
+      <Provider store={store}>
+        <RootContent />
+      </Provider>
+    </SafeAreaProvider>
   );
 }
+
+type DatabaseStatus = 'loading' | 'ready' | 'failed';
 
 function RootContent() {
   const dispatch = useDispatch();
   const { t, language } = useLedgerTranslations();
   const directionClass = getTextDirection(language) === 'rtl' ? 'ledger-rtl' : 'ledger-ltr';
-  const [databaseStatus, setDatabaseStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
+  // A font that fails to load leaves the system font in place (spec edge case), so errors also unblock the app.
+  const [fontsLoaded, fontError] = useFonts({
+    IBMPlexSansArabic_400Regular,
+    IBMPlexSansArabic_500Medium,
+    IBMPlexSansArabic_600SemiBold,
+    IBMPlexSansArabic_700Bold,
+  });
+  const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus>('loading');
+
+  const openDatabase = useCallback((isActive: () => boolean = () => true) => {
+    void openLedgerDatabase().then(
+      () => {
+        if (!isActive()) return;
+        try {
+          dispatch(languageChanged(getSavedLanguage()));
+          setDatabaseStatus('ready');
+        } catch {
+          setDatabaseStatus('failed');
+        }
+      },
+      () => {
+        if (isActive()) setDatabaseStatus('failed');
+      },
+    );
+  }, [dispatch]);
 
   useEffect(() => {
     let active = true;
-    void openLedgerDatabase().then(
-      () => {
-        if (!active) return;
-        try {
-          dispatch(languageChanged(getSavedLanguage()));
-          setDatabaseStatus('ready');
-        } catch {
-          setDatabaseStatus('failed');
-        }
-      },
-      () => {
-        if (active) setDatabaseStatus('failed');
-      },
-    );
+    openDatabase(() => active);
     return () => {
       active = false;
     };
-  }, [dispatch]);
+  }, [openDatabase]);
 
   function retryDatabase(): void {
     setDatabaseStatus('loading');
-    void openLedgerDatabase().then(
-      () => {
-        try {
-          dispatch(languageChanged(getSavedLanguage()));
-          setDatabaseStatus('ready');
-        } catch {
-          setDatabaseStatus('failed');
-        }
-      },
-      () => setDatabaseStatus('failed'),
-    );
+    openDatabase();
   }
 
-  if (databaseStatus !== 'ready') {
+  const fontsSettled = fontsLoaded || Boolean(fontError);
+
+  if (!fontsSettled || databaseStatus !== 'ready') {
     return (
-      <View
-        className={`flex-1 items-center justify-center gap-4 bg-slate-100 p-6 ${directionClass}`}
-      >
+      <View className={`flex-1 items-center justify-center gap-4 bg-ground p-6 ${directionClass}`}>
         {databaseStatus === 'failed' ? (
           <>
-            <Text accessibilityRole="alert" className="text-center text-base text-red-800">
+            <Text accessibilityRole="alert" className="type-body text-center text-debt-strong">
               {t.databaseStartupFailed}
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              className="ledger-primary-button min-h-12 min-w-12 justify-center"
-              onPress={retryDatabase}
-            >
-              <Text className="font-semibold text-white">{t.retry}</Text>
+            <Pressable accessibilityRole="button" className="ui-button-primary min-w-button" onPress={retryDatabase}>
+              <Text className="type-button text-surface">{t.retry}</Text>
             </Pressable>
           </>
         ) : (
-          <Text className="text-base text-slate-700">{t.loading}</Text>
+          <Text accessibilityRole="progressbar" className="type-body text-ink-2">
+            {t.loading}
+          </Text>
         )}
       </View>
     );
   }
 
   return (
-      <Provider store={store}>
-      <View className="flex-1 bg-slate-50">
+    <TopBarProvider>
+      <View className={`flex-1 bg-ground ${directionClass}`}>
         <TopBar />
         <View className="flex-1">
           <Stack screenOptions={{ headerShown: false }} />
         </View>
-        <BottomTabs  />
+        <BottomTabs />
       </View>
-    </Provider>
+    </TopBarProvider>
   );
 }

@@ -74,3 +74,10 @@ export function updateTicketFromDraft(
     voidedAt: existing.voidedAt,
   };
 }
+
+export type TicketFilter = 'ALL' | TicketStatus;
+
+/** Ticket list filter (spec US7): by derived status; voided tickets never appear. */
+export function filterTicketsByStatus(tickets: readonly Ticket[], filter: TicketFilter): Ticket[] {
+  return tickets.filter((ticket) => !ticket.voidedAt && (filter === 'ALL' || ticket.status === filter));
+}

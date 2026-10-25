@@ -1,4 +1,6 @@
 import type * as SQLite from 'expo-sqlite';
+import { createId } from '@/lib/id';
+import { WALK_IN_CUSTOMER_ID, WALK_IN_INTERNAL_CODE } from '@/features/ledger/constants';
 
 async function getColumnNames(db: SQLite.SQLiteDatabase, tableName: string): Promise<Set<string>> {
   const columns = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${tableName});`);
@@ -41,4 +43,47 @@ export async function migrateLedgerDatabase(db: SQLite.SQLiteDatabase): Promise<
     CREATE INDEX IF NOT EXISTS idx_active_products_barcode
       ON products(barcode) WHERE is_active = 1 AND barcode IS NOT NULL;
   `);
+  ensureWalkInCustomer(db);
+}
+
+/**
+ * Seeds the built-in walk-in customer once per device (spec 003, FR-017) and logs it for the
+ * future server sync (FR-021). Idempotent; written with plain SQL so the db layer stays free of
+ * feature services.
+ */
+export function ensureWalkInCustomer(db: SQLite.SQLiteDatabase): void {
+  db.withTransactionSync(() => {
+    const now = new Date().toISOString();
+    const inserted = db.runSync(
+      `INSERT OR IGNORE INTO customers
+         (id, internal_code, display_label, real_name, phone_number, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, NULL, NULL, 1, ?, ?);`,
+      WALK_IN_CUSTOMER_ID,
+      WALK_IN_INTERNAL_CODE,
+      WALK_IN_CUSTOMER_ID,
+      now,
+      now,
+    );
+    if (inserted.changes !== 1) return;
+    const customer = {
+      id: WALK_IN_CUSTOMER_ID,
+      internalCode: WALK_IN_INTERNAL_CODE,
+      displayLabel: WALK_IN_CUSTOMER_ID,
+      realName: null,
+      phoneNumber: null,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    db.runSync(
+      `INSERT INTO pending_changes
+         (id, entity_type, entity_id, operation, payload_json, status, created_at, updated_at)
+       VALUES (?, 'customer', ?, 'create', ?, 'pending', ?, ?);`,
+      createId(),
+      WALK_IN_CUSTOMER_ID,
+      JSON.stringify({ customer }),
+      now,
+      now,
+    );
+  });
 }

@@ -1,34 +1,14 @@
 import type * as SQLite from 'expo-sqlite';
 import { getLedgerDatabase, withLedgerTransaction } from '@/db';
+import { isWalkInCustomer } from '../constants';
 import { Payment, PaymentInput } from '../types/payment';
 import { appendAuditEvent } from './auditService';
 import { createPendingChange, persistPendingChange } from './pendingChangeService';
 import { createPaymentRecord, validateTicketPayment } from './paymentService';
+import { insertPaymentRecords, mapPayment, PaymentRow, voidPaymentRecords, writePaymentRow } from './paymentRecords';
 import { TicketRepository, ticketRepository } from './ticketRepository';
 
-interface PaymentRow {
-  id: string;
-  ticket_id: string;
-  customer_id: string;
-  amount_millimes: number;
-  payment_kind: Payment['paymentKind'];
-  applied_at: string;
-  updated_at: string;
-  voided_at: string | null;
-}
-
-function mapPayment(row: PaymentRow): Payment {
-  return {
-    id: row.id,
-    ticketId: row.ticket_id,
-    customerId: row.customer_id,
-    amountMillimes: row.amount_millimes,
-    paymentKind: row.payment_kind,
-    appliedAt: row.applied_at,
-    updatedAt: row.updated_at,
-    voidedAt: row.voided_at,
-  };
-}
+export { insertPaymentRecords };
 
 export class PaymentRepository {
   constructor(
@@ -62,30 +42,13 @@ export class PaymentRepository {
     return row ? mapPayment(row) : null;
   }
 
-  private writePayment(payment: Payment): void {
-    this.database.runSync(
-      `INSERT INTO payments
-         (id, ticket_id, customer_id, amount_millimes, payment_kind, applied_at, updated_at, voided_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET ticket_id = excluded.ticket_id,
-         customer_id = excluded.customer_id, amount_millimes = excluded.amount_millimes,
-         payment_kind = excluded.payment_kind, applied_at = excluded.applied_at,
-         updated_at = excluded.updated_at, voided_at = excluded.voided_at;`,
-      payment.id,
-      payment.ticketId,
-      payment.customerId,
-      payment.amountMillimes,
-      payment.paymentKind,
-      payment.appliedAt,
-      payment.updatedAt,
-      payment.voidedAt,
-    );
-  }
-
   private validate(input: PaymentInput, excludePaymentId?: string): void {
     const ticket = this.tickets.getTicket(input.ticketId);
     if (!ticket) {
       throw new Error('Ticket not found or voided.');
+    }
+    if (isWalkInCustomer(ticket.customerId)) {
+      throw new Error('Walk-in tickets cannot receive payments.');
     }
     if (ticket.customerId !== input.customerId) {
       throw new Error('Payment customer must match the selected ticket.');
@@ -97,14 +60,17 @@ export class PaymentRepository {
     }
   }
 
+  /** The at-sale payment of a walk-in ticket only changes with its ticket (spec 003, research R18). */
+  private assertNotWalkInSalePayment(payment: Payment): void {
+    if (payment.paymentKind === 'AT_SALE' && isWalkInCustomer(payment.customerId)) {
+      throw new Error('Void the walk-in ticket instead.');
+    }
+  }
+
   createPayment(input: PaymentInput): Payment {
     return this.transaction((db) => {
       this.validate(input);
-      const payment = createPaymentRecord(input);
-      this.writePayment(payment);
-      appendAuditEvent({ entityType: 'payment', entityId: payment.id, action: 'create', before: null, after: { ...payment } }, db);
-      persistPendingChange(createPendingChange('payment', payment.id, 'create', { payment }), db);
-      return payment;
+      return insertPaymentRecords(createPaymentRecord(input), db);
     });
   }
 
@@ -114,12 +80,13 @@ export class PaymentRepository {
       if (!before || before.voidedAt) {
         throw new Error('Active payment not found.');
       }
+      this.assertNotWalkInSalePayment(before);
       this.validate(input, id);
       const after = {
-        ...createPaymentRecord({ ...input, id, appliedAt: before.appliedAt }),
+        ...createPaymentRecord({ ...input, id, appliedAt: before.appliedAt, paymentKind: before.paymentKind }),
         updatedAt: new Date().toISOString(),
       };
-      this.writePayment(after);
+      writePaymentRow(after, db);
       appendAuditEvent({ entityType: 'payment', entityId: id, action: 'update', before: { ...before }, after: { ...after } }, db);
       persistPendingChange(createPendingChange('payment', id, 'update', { before, after }), db);
       return after;
@@ -132,12 +99,8 @@ export class PaymentRepository {
       if (!before || before.voidedAt) {
         throw new Error('Active payment not found.');
       }
-      const voidedAt = new Date().toISOString();
-      const after = { ...before, voidedAt, updatedAt: voidedAt };
-      this.writePayment(after);
-      appendAuditEvent({ entityType: 'payment', entityId: id, action: 'void', before: { ...before }, after: { ...after } }, db);
-      persistPendingChange(createPendingChange('payment', id, 'soft_delete', { before, after }), db);
-      return after;
+      this.assertNotWalkInSalePayment(before);
+      return voidPaymentRecords(before, db);
     });
   }
 }

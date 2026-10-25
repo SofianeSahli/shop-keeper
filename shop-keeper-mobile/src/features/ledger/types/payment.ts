@@ -1,4 +1,5 @@
-export type PaymentKind = 'TICKET' | 'CUSTOMER_BALANCE';
+/** `AT_SALE`: received when the ticket was recorded (spec 003, US8). */
+export type PaymentKind = 'TICKET' | 'CUSTOMER_BALANCE' | 'AT_SALE';
 
 export interface Payment {
   id: string;

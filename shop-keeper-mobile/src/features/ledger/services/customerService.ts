@@ -3,6 +3,9 @@ import { validateRequiredText } from '@/utils/validation';
 import { ledgerRepository, LedgerRepository } from './ledgerRepository';
 import { createPendingChange, persistPendingChange } from './pendingChangeService';
 import { createId } from '@/lib/id';
+import { isWalkInCustomer } from '../constants';
+
+const WALK_IN_LOCKED = 'The walk-in customer cannot be changed.';
 
 export function createCustomerRecord(input: CustomerInput): Customer {
   const displayLabel = validateRequiredText(input.displayLabel, 'Customer display label');
@@ -31,12 +34,14 @@ export function updateCustomerRecord(existing: Customer, input: CustomerInput): 
   };
 }
 
+/** Customers the owner manages; the built-in walk-in customer is left out unless asked for. */
 export function listCustomers(
   search = '',
   includeInactive = false,
   repository: LedgerRepository = ledgerRepository,
+  { includeWalkIn = false }: { includeWalkIn?: boolean } = {},
 ): Customer[] {
-  return repository.listCustomers(search, includeInactive);
+  return repository.listCustomers(search, includeInactive, includeWalkIn);
 }
 
 export function getCustomer(id: string, repository: LedgerRepository = ledgerRepository): Customer | null {
@@ -60,6 +65,7 @@ export function updateCustomer(
   input: CustomerInput,
   repository: LedgerRepository = ledgerRepository,
 ): Customer {
+  if (isWalkInCustomer(id)) throw new Error(WALK_IN_LOCKED);
   return repository.transaction((db) => {
     const existing = repository.getCustomer(id);
     if (!existing) {
@@ -79,6 +85,7 @@ export function removeCustomer(
   id: string,
   repository: LedgerRepository = ledgerRepository,
 ): Customer {
+  if (isWalkInCustomer(id)) throw new Error(WALK_IN_LOCKED);
   return repository.transaction((db) => {
     const customer = repository.getCustomer(id);
     if (!customer) {

@@ -1,30 +1,34 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
+import { router } from 'expo-router';
+import { View } from 'react-native';
+import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
-import { refreshCompleted } from '../store/ledgerSlice';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { getLedgerErrorMessage } from '@/i18n/errorMessages';
-import { formatLedgerDate, formatMillimeAmount } from '@/lib/money';
-import { ConfirmAction } from '../components/feedback/ConfirmAction';
-import { FeedbackState } from '../components/feedback/FeedbackState';
-import { LedgerPage } from '../components/LedgerPage';
+import { formatMessage } from '@/i18n/format';
+import { locales } from '@/lib/money';
+import { AmountText, Avatar, DayHeader, EmptyState, Fab, FilterChips, InfoBanner, ListRow, ScreenScroll, StatusChip } from '@/components/ui';
+import { groupByLocalDay } from '@/components/ui/logic/dayGroups';
+import { getCustomerLabel } from '../components/customers/customerLabel';
+import { sumActivePaymentsByTicket } from '../services/customerBalanceService';
+import { listCustomers } from '../services/customerService';
+import { paymentRepository } from '../services/paymentRepository';
+import { ticketRepository } from '../services/ticketRepository';
+import { filterTicketsByStatus, TicketFilter } from '../services/ticketService';
 import { Customer } from '../types/customer';
 import { Ticket } from '../types/ticket';
-import { listCustomers } from '../services/customerService';
-import { ticketRepository } from '../services/ticketRepository';
 
 export function TicketListScreen() {
   const { t, language } = useLedgerTranslations();
-  const dispatch = useDispatch();
   const refreshVersion = useSelector((state: RootState) => state.ledger.refreshVersion);
-  const [actionError, setActionError] = useState('');
+  const [filter, setFilter] = useState<TicketFilter>('ALL');
+
   const result = useMemo(() => {
     try {
       return {
         tickets: ticketRepository.listTickets(),
         customers: listCustomers('', true),
+        paidByTicket: sumActivePaymentsByTicket(paymentRepository.listPayments()),
         error: '',
         version: refreshVersion,
       };
@@ -32,67 +36,68 @@ export function TicketListScreen() {
       return {
         tickets: [] as Ticket[],
         customers: [] as Customer[],
+        paidByTicket: new Map<string, number>(),
         error: getLedgerErrorMessage(cause, t, t.loadFailed),
         version: refreshVersion,
       };
     }
   }, [refreshVersion, t]);
-  const error = actionError || result.error;
+
+  const visible = filterTicketsByStatus(result.tickets, filter);
+  const groups = groupByLocalDay(visible, (ticket) => ticket.createdAt);
+  const time = new Intl.DateTimeFormat(locales[language], { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <LedgerPage key={result.version} title={t.tickets}>
-      <Link href="/ledger/ticket-form" asChild>
-        <Pressable accessibilityRole="button" className="ledger-primary-button">
-          <Text className="font-semibold text-white">{t.newTicket}</Text>
-        </Pressable>
-      </Link>
-      {error ? <FeedbackState kind="error" message={error} /> : null}
-      {result.tickets.length === 0 && !error ? <FeedbackState kind="empty" message={t.noTickets} /> : null}
-      {result.tickets.map((ticket) => {
-        const customer = result.customers.find((item) => item.id === ticket.customerId);
-        const statusLabel = ticket.status === 'PAID'
-          ? t.paid
-          : ticket.status === 'PARTIALLY_PAID'
-            ? t.partiallyPaid
-            : t.unpaid;
-        return (
-          <View key={ticket.id} className="ledger-card">
-            <View className="flex-row items-start justify-between gap-3">
-              <View className="flex-1 gap-1">
-                <Link href={{ pathname: '/ledger/ticket-detail', params: { id: ticket.id } }}>
-                  <Text className="text-lg font-semibold text-slate-900">
-                    {customer?.displayLabel ?? ticket.customerId}
-                  </Text>
-                </Link>
-                <Text className="text-sm text-slate-600">{formatLedgerDate(ticket.createdAt, language)}</Text>
-                <Text className="font-semibold text-blue-800">{formatMillimeAmount(ticket.totalMillimes, language)}</Text>
-                <Text className="text-sm text-slate-700">{t.status}: {statusLabel}</Text>
-              </View>
-              <Link href={{ pathname: '/ledger/ticket-form', params: { id: ticket.id } }} asChild>
-                <Pressable accessibilityRole="button" className="ledger-touch-target rounded-lg bg-slate-100 px-3 py-2">
-                  <Text className="font-medium text-slate-800">{t.editTicket}</Text>
-                </Pressable>
-              </Link>
+    <View className="flex-1">
+      <ScreenScroll key={result.version}>
+        <FilterChips
+          options={[
+            { value: 'ALL', label: t.filterAll },
+            { value: 'UNPAID', label: t.filterUnpaid },
+            { value: 'PARTIALLY_PAID', label: t.filterPartial },
+            { value: 'PAID', label: t.filterPaid },
+          ]}
+          value={filter}
+          onChange={setFilter}
+          accessibilityLabel={t.tickets}
+        />
+        {result.error ? <InfoBanner tone="error" title={result.error} /> : null}
+        {visible.length === 0 && !result.error ? (
+          <EmptyState
+            icon="receipt-outline"
+            message={result.tickets.length === 0 ? t.noTickets : t.noTicketsForFilter}
+            actionLabel={result.tickets.length === 0 ? t.newTicket : undefined}
+            onAction={() => router.push('/ledger/ticket-form')}
+          />
+        ) : null}
+        {groups.map((group) => (
+          <View key={group.dayKey} className="gap-2">
+            <DayHeader dayKey={group.dayKey} />
+            <View className="ui-card-flush">
+              {group.items.map((ticket, index) => {
+                const label = getCustomerLabel(ticket.customerId, result.customers, t);
+                const remaining = Math.max(ticket.totalMillimes - (result.paidByTicket.get(ticket.id) ?? 0), 0);
+                return (
+                  <ListRow
+                    key={ticket.id}
+                    separated={index > 0}
+                    leading={<Avatar label={label} />}
+                    title={label}
+                    meta={`${formatMessage(t.itemsCount, { count: ticket.lines.length })} · ${time.format(new Date(ticket.createdAt))}`}
+                    detail={<StatusChip status={ticket.status} />}
+                    trailing={
+                      <AmountText millimes={ticket.status === 'PAID' ? ticket.totalMillimes : remaining} tone={ticket.status === 'PAID' ? 'ink' : 'debt'} />
+                    }
+                    chevron
+                    onPress={() => router.push({ pathname: '/ledger/ticket-detail', params: { id: ticket.id } })}
+                  />
+                );
+              })}
             </View>
-            <ConfirmAction
-              buttonLabel={t.voidTicket}
-              title={t.confirmRemoval}
-              message={t.confirmAction}
-              confirmLabel={t.confirm}
-              cancelLabel={t.cancel}
-              onConfirm={() => {
-                try {
-                  ticketRepository.voidTicket(ticket.id);
-                  dispatch(refreshCompleted());
-                  setActionError('');
-                } catch (cause) {
-                  setActionError(getLedgerErrorMessage(cause, t, t.saveFailed));
-                }
-              }}
-            />
           </View>
-        );
-      })}
-    </LedgerPage>
+        ))}
+      </ScreenScroll>
+      <Fab label={t.newTicket} onPress={() => router.push('/ledger/ticket-form')} />
+    </View>
   );
 }

@@ -3,7 +3,7 @@ import { getTextDirection, getTranslations } from '@/i18n';
 import { getLedgerErrorMessage } from '@/i18n/errorMessages';
 import { calculateLineTotal, calculateTicketTotal } from './ticketDraftService';
 import { deriveTicketStatus, validateTicketPayment } from './paymentService';
-import { buildTicketFromDraft, getTicketStatus, updateTicketFromDraft } from './ticketService';
+import { buildTicketFromDraft, filterTicketsByStatus, getTicketStatus, updateTicketFromDraft } from './ticketService';
 import { Ticket } from '../types/ticket';
 
 vi.mock('@/lib/id', () => ({ createId: vi.fn(() => 'generated-id') }));
@@ -80,5 +80,26 @@ describe('localization helpers', () => {
       new Error('SQLite driver detail'),
       getTranslations('ar'),
     )).toBe(getTranslations('ar').operationFailed);
+  });
+});
+
+describe('filterTicketsByStatus', () => {
+  const tickets: Ticket[] = [
+    { ...ticket, id: 'unpaid', status: 'UNPAID' },
+    { ...ticket, id: 'partial', status: 'PARTIALLY_PAID' },
+    { ...ticket, id: 'paid', status: 'PAID' },
+    { ...ticket, id: 'voided', status: 'UNPAID', voidedAt: '2025-01-02T00:00:00.000Z' },
+  ];
+
+  it('keeps every active ticket for "all" and never shows voided ones', () => {
+    expect(filterTicketsByStatus(tickets, 'ALL').map((item) => item.id)).toEqual(['unpaid', 'partial', 'paid']);
+  });
+
+  it.each([
+    ['UNPAID', ['unpaid']],
+    ['PARTIALLY_PAID', ['partial']],
+    ['PAID', ['paid']],
+  ] as const)('filters on %s', (filter, ids) => {
+    expect(filterTicketsByStatus(tickets, filter).map((item) => item.id)).toEqual(ids);
   });
 });

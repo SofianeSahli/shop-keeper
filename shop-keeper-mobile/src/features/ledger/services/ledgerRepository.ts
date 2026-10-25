@@ -3,6 +3,7 @@ import * as SQLite from 'expo-sqlite';
 import { getLedgerDatabase, withLedgerTransaction } from '@/db';
 import { Customer } from '../types/customer';
 import { Product } from '../types/product';
+import { WALK_IN_CUSTOMER_ID } from '../constants';
 
 interface ProductRow {
   id: string;
@@ -105,16 +106,19 @@ export class LedgerRepository {
     );
   }
 
-  listCustomers(search = '', includeInactive = false): Customer[] {
+  listCustomers(search = '', includeInactive = false, includeWalkIn = false): Customer[] {
     const searchPattern = `%${search.trim()}%`;
     const rows = this.database.getAllSync<CustomerRow>(
       `SELECT * FROM customers
        WHERE (? = 1 OR is_active = 1)
+         AND (? = 1 OR id <> ?)
          AND (display_label LIKE ? COLLATE NOCASE
            OR COALESCE(real_name, '') LIKE ? COLLATE NOCASE
            OR COALESCE(phone_number, '') LIKE ?)
        ORDER BY display_label COLLATE NOCASE, created_at DESC;`,
       includeInactive ? 1 : 0,
+      includeWalkIn ? 1 : 0,
+      WALK_IN_CUSTOMER_ID,
       searchPattern,
       searchPattern,
       searchPattern,

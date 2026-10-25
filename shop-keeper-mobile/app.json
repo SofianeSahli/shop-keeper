@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "shopkeepermobile",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "locales": {
       "en": "./src/i18n/permissions/en.json",
       "fr": "./src/i18n/permissions/fr.json",
