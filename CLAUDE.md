@@ -18,6 +18,10 @@ Feature **003 — Ledger visual redesign** (`.specify/feature.json` points to it
 
 Suggested implementation order: tokens + font → UI components (with tests) → shell restyle + 002 leftovers → Home → Ticket form → Payment form → Customers + Customer ledger → Product form → Ticket list + Product catalog → translations audit → validate.
 
+## Approved designs waiting for a spec
+
+- **Async feedback (toasts + loaders)** — `shop-keeper-mobile/docs/design/async-feedback.md`. Services will become async; the app needs one app-wide toast, one blocking loader that names the running action, busy buttons and skeletons. This is for a NEW Spec Kit feature, not 003 (closed). When the owner asks to start it, create the new feature with `speckit-specify` using this note as input.
+
 ## Non-negotiable rules (from the constitution)
 
 - No `StyleSheet`, inline `style={{…}}` objects or hex colors in `.tsx` files. Styles live in Tailwind config / `.css` style files; components use classes.
