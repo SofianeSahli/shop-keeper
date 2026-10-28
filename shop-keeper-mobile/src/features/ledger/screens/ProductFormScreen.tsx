@@ -1,58 +1,110 @@
-import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollViewInstance, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
-import { getLedgerErrorMessage } from '@/i18n/errorMessages';
+import { useAsyncAction } from '@/features/feedback/useAsyncAction';
+import { useLedgerQuery } from '@/features/feedback/useLedgerQuery';
 import { formatMillimeAmount, formatMillimeInput } from '@/lib/money';
-import { Icon, InfoBanner, ScreenScroll } from '@/components/ui';
+import { BusyButton, Icon, InfoBanner, ScreenScroll, SkeletonRows, useFieldErrors } from '@/components/ui';
 import { useTopBarOptions } from '@/navigation/TopBarContext';
 import { createProduct, getProduct, listProducts, removeProduct, updateProduct } from '../services/productService';
 import { LedgerField } from '../components/forms/LedgerField';
-import { MillimeInput, parseMillimes } from '../components/forms/MillimeInput';
+import { isValidMillimeText, MillimeInput, parseMillimes } from '../components/forms/MillimeInput';
+import { ledgerFieldErrorFor } from '../components/forms/ledgerFieldError';
 import { ConfirmAction } from '../components/feedback/ConfirmAction';
 import { BarcodeScanner } from '../components/ticket/BarcodeScanner';
 import { clearFormDirty, refreshCompleted, setFormDirty } from '../store/ledgerSlice';
 import { useDirtyFormGuard } from '../hooks/useDirtyFormGuard';
 import { Product } from '../types/product';
 
-export function ProductFormScreen() {
-  const { id, barcode } = useLocalSearchParams<{ id?: string; barcode?: string }>();
-  return <ProductForm key={id ?? `new-${barcode ?? ''}`} id={id} initialBarcode={barcode} />;
+async function loadProductForm(id: string | undefined) {
+  const product = id ? await getProduct(id) : null;
+  const catalog = await listProducts();
+  return { product, catalog };
 }
 
-function findDuplicate(code: string, ownId: string | undefined): Product | null {
+const PRODUCT_FIELDS = ['barcode', 'name', 'price'] as const;
+
+function findDuplicate(catalog: readonly Product[], code: string, ownId: string | undefined): Product | null {
   const trimmed = code.trim();
   if (!trimmed) return null;
-  return listProducts().find((product) => product.id !== ownId && product.isActive && product.barcode?.trim() === trimmed) ?? null;
+  return catalog.find((product) => product.id !== ownId && product.isActive && product.barcode?.trim() === trimmed) ?? null;
 }
 
-function ProductForm({ id, initialBarcode }: { id?: string; initialBarcode?: string }) {
-  const { t, language } = useLedgerTranslations();
+export function ProductFormScreen() {
+  const { id, barcode } = useLocalSearchParams<{ id?: string; barcode?: string }>();
+  const { t } = useLedgerTranslations();
   useDirtyFormGuard();
   useTopBarOptions({ title: id ? t.editProduct : t.newProduct });
+  const loadForm = useCallback(() => loadProductForm(id), [id]);
+  const query = useLedgerQuery(loadForm, [id]);
+
+  if (query.status === 'loading') {
+    return (
+      <ScreenScroll>
+        <SkeletonRows variant="tile" count={3} />
+      </ScreenScroll>
+    );
+  }
+  if (!query.data || (id && !query.data.product)) {
+    return (
+      <ScreenScroll>
+        <InfoBanner
+          tone="error"
+          title={query.status === 'error' ? query.error : t.recordUnavailable}
+          actionLabel={query.status === 'error' ? t.retry : undefined}
+          onAction={query.retry}
+        />
+      </ScreenScroll>
+    );
+  }
+  return (
+    <ProductForm
+      key={id ?? `new-${barcode ?? ''}`}
+      id={id}
+      initialBarcode={barcode}
+      product={query.data.product}
+      catalog={query.data.catalog}
+    />
+  );
+}
+
+interface ProductFormProps {
+  id?: string;
+  initialBarcode?: string;
+  product: Product | null;
+  catalog: readonly Product[];
+}
+
+function ProductForm({ id, initialBarcode, product, catalog }: ProductFormProps) {
+  const { t, language } = useLedgerTranslations();
   const dispatch = useDispatch();
-  const [initial] = useState(() => {
-    try {
-      const product = id ? getProduct(id) : null;
-      return { product, error: id && !product ? t.loadFailed : '' };
-    } catch (cause) {
-      return { product: null, error: getLedgerErrorMessage(cause, t, t.loadFailed) };
-    }
-  });
-  const startBarcode = initial.product?.barcode ?? initialBarcode ?? '';
-  const startPrice = initial.product ? formatMillimeInput(initial.product.sellingPriceMillimes) : '';
-  const [name, setName] = useState(initial.product?.name ?? '');
+  const startBarcode = product?.barcode ?? initialBarcode ?? '';
+  const startPrice = product ? formatMillimeInput(product.sellingPriceMillimes) : '';
+  const [name, setName] = useState(product?.name ?? '');
   const [barcode, setBarcode] = useState(startBarcode);
-  const [duplicate, setDuplicate] = useState<Product | null>(() => findDuplicate(startBarcode, id));
   const [price, setPrice] = useState(startPrice);
   const [scannerArmed, setScannerArmed] = useState(!startBarcode);
-  const [error, setError] = useState(initial.error);
+  const duplicate = findDuplicate(catalog, barcode, id);
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const fieldErrors = useFieldErrors({
+    fieldOrder: PRODUCT_FIELDS,
+    validate: () => ({
+      name: name.trim() ? undefined : t.fieldRequired,
+      price: !price.trim() ? t.fieldRequired : isValidMillimeText(price) ? undefined : t.invalidAmount,
+    }),
+    fieldErrorFor: ledgerFieldErrorFor(
+      { duplicateBarcode: 'barcode', invalidBarcode: 'barcode', requiredField: 'name', invalidAmount: 'price' },
+      t,
+    ),
+    scrollRef,
+  });
 
   useEffect(() => {
-    const hasChanges = name !== (initial.product?.name ?? '') || barcode !== startBarcode || price !== startPrice;
-    dispatch(setFormDirty({ section: 'products', isDirty: hasChanges && !initial.error }));
-  }, [barcode, dispatch, initial.error, initial.product, name, price, startBarcode, startPrice]);
+    const hasChanges = name !== (product?.name ?? '') || barcode !== startBarcode || price !== startPrice;
+    dispatch(setFormDirty({ section: 'products', isDirty: hasChanges }));
+  }, [barcode, dispatch, name, price, product, startBarcode, startPrice]);
 
   useEffect(() => {
     return () => {
@@ -60,60 +112,50 @@ function ProductForm({ id, initialBarcode }: { id?: string; initialBarcode?: str
     };
   }, [dispatch]);
 
-  function updateBarcodeValue(nextValue: string): void {
-    setBarcode(nextValue);
-    try {
-      setDuplicate(findDuplicate(nextValue, id));
-    } catch (cause) {
-      setError(getLedgerErrorMessage(cause, t, t.loadFailed));
-    }
-  }
-
   function finish(): void {
     dispatch(clearFormDirty());
     dispatch(refreshCompleted());
     router.replace('/ledger/products');
   }
 
-  function save(): void {
-    if (duplicate) return;
-    try {
+  const saveAction = useAsyncAction(() => ({
+    checkFields: fieldErrors.checkFields,
+    showFieldError: fieldErrors.showReportedError,
+    work: () => {
       const input = { name, barcode: barcode.trim() || null, sellingPriceMillimes: parseMillimes(price) };
-      if (id) updateProduct(id, input);
-      else createProduct(input);
-      finish();
-    } catch (cause) {
-      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
-    }
-  }
+      return id ? updateProduct(id, input) : createProduct(input);
+    },
+    loaderLabel: t.savingProduct,
+    loaderDetail: name.trim() || null,
+    successToast: { title: t.productSavedToast, detail: name.trim() },
+    onSuccess: finish,
+    failureThing: t.thingProduct,
+    keepValuesMessage: t.valuesKept,
+  }));
 
-  function remove(): void {
-    if (!id) return;
-    try {
-      removeProduct(id);
-      finish();
-    } catch (cause) {
-      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
-    }
-  }
+  const removeAction = useAsyncAction(() => ({
+    work: () => removeProduct(id ?? ''),
+    loaderLabel: t.removingProduct,
+    loaderDetail: name.trim() || null,
+    successToast: { title: t.productRemovedToast, detail: name.trim() },
+    onSuccess: finish,
+    failureThing: t.thingProduct,
+    keepValuesMessage: t.nothingChanged,
+  }));
 
-  const isNewCode = !duplicate && barcode.trim() !== '' && barcode.trim() !== (initial.product?.barcode ?? '');
+  const isNewCode = !duplicate && barcode.trim() !== '' && barcode.trim() !== (product?.barcode ?? '');
   const footer = (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: Boolean(duplicate) }}
-      disabled={Boolean(duplicate)}
-      className={`ui-button-primary min-h-button-lg ${duplicate ? 'ui-button-disabled' : ''}`}
-      onPress={save}
-    >
-      <Text className="type-button text-surface">{t.saveProduct}</Text>
-    </Pressable>
+    <BusyButton
+      label={t.saveProduct}
+      busy={saveAction.busy}
+      disabled={Boolean(duplicate) || removeAction.busy}
+      className="min-h-button-lg"
+      onPress={() => void saveAction.run()}
+    />
   );
 
   return (
-    <ScreenScroll footer={footer} footerWithSafeArea>
-      {error ? <InfoBanner tone="error" title={error} /> : null}
-
+    <ScreenScroll footer={footer} footerWithSafeArea scrollRef={scrollRef}>
       <BarcodeScanner
         mode="inline"
         armed={scannerArmed}
@@ -122,14 +164,20 @@ function ProductForm({ id, initialBarcode }: { id?: string; initialBarcode?: str
         closeLabel={t.close}
         onScanned={(value) => {
           setScannerArmed(false);
-          updateBarcodeValue(value);
+          setBarcode(value);
+          fieldErrors.fieldChanged('barcode');
         }}
       />
 
       <LedgerField
+        ref={fieldErrors.register('barcode')}
         label={t.barcodeOptional}
         value={barcode}
-        onChangeText={updateBarcodeValue}
+        error={fieldErrors.errorOf('barcode')}
+        onChangeText={(value) => {
+          setBarcode(value);
+          fieldErrors.fieldChanged('barcode');
+        }}
         autoCapitalize="none"
         textAlign="left"
         hint={duplicate || isNewCode ? undefined : t.noCameraHint}
@@ -161,22 +209,40 @@ function ProductForm({ id, initialBarcode }: { id?: string; initialBarcode?: str
       ) : null}
 
       <LedgerField
+        ref={fieldErrors.register('name')}
         label={t.productName}
         value={name}
-        onChangeText={setName}
+        error={fieldErrors.errorOf('name')}
+        onChangeText={(value) => {
+          setName(value);
+          fieldErrors.fieldChanged('name');
+        }}
         autoCapitalize="sentences"
         textAlign={language === 'ar' ? 'right' : 'left'}
       />
-      <MillimeInput label={t.salePrice} value={price} onChangeText={setPrice} suffix={t.currencySuffix} hint={t.millimesHint} />
+      <MillimeInput
+        ref={fieldErrors.register('price')}
+        label={t.salePrice}
+        value={price}
+        error={fieldErrors.errorOf('price')}
+        onChangeText={(value) => {
+          setPrice(value);
+          fieldErrors.fieldChanged('price');
+        }}
+        suffix={t.currencySuffix}
+        hint={t.millimesHint}
+      />
 
-      {id && initial.product?.isActive ? (
+      {id && product?.isActive ? (
         <ConfirmAction
           buttonLabel={t.removeProduct}
           title={t.confirmRemoval}
           message={t.removeProductMessage}
           confirmLabel={t.remove}
           cancelLabel={t.cancel}
-          onConfirm={remove}
+          busy={removeAction.busy}
+          busyLabel={t.removingProduct}
+          onConfirm={() => void removeAction.run()}
         />
       ) : null}
     </ScreenScroll>

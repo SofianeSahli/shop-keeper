@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollViewInstance } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
-import { getLedgerErrorMessage } from '@/i18n/errorMessages';
+import { useAsyncAction } from '@/features/feedback/useAsyncAction';
+import { useLedgerQuery } from '@/features/feedback/useLedgerQuery';
 import { formatMessage } from '@/i18n/format';
 import { formatMillimeAmount, formatMillimeInput } from '@/lib/money';
-import { InfoBanner, ScreenScroll } from '@/components/ui';
+import { BusyButton, InfoBanner, ScreenScroll, SkeletonRows, useFieldErrors } from '@/components/ui';
 import { useTopBarOptions } from '@/navigation/TopBarContext';
 import { clearFormDirty, refreshCompleted, setFormDirty } from '../store/ledgerSlice';
 import { PaymentForm } from '../components/payment/PaymentForm';
@@ -14,6 +15,7 @@ import { PaymentTicketSheet, PayableTicket } from '../components/payment/Payment
 import { PaymentCustomerSheet } from '../components/payment/PaymentCustomerSheet';
 import { ConfirmAction } from '../components/feedback/ConfirmAction';
 import { parseMillimes } from '../components/forms/MillimeInput';
+import { ledgerFieldErrorFor } from '../components/forms/ledgerFieldError';
 import { getCustomerPaymentCandidates, summariseDebtors, sumActivePaymentsByTicket } from '../services/customerBalanceService';
 import { listCustomers } from '../services/customerService';
 import { paymentRepository } from '../services/paymentRepository';
@@ -24,10 +26,53 @@ import { Customer } from '../types/customer';
 import { Payment } from '../types/payment';
 import { Ticket } from '../types/ticket';
 
+interface PaymentFormData {
+  customers: Customer[];
+  tickets: Ticket[];
+  payments: Payment[];
+  payment: Payment | null;
+}
+
+async function loadPaymentForm(id: string | undefined): Promise<PaymentFormData> {
+  const customers = await listCustomers('', true);
+  const tickets = await ticketRepository.listTickets();
+  const payments = await paymentRepository.listPayments();
+  const payment = id ? await paymentRepository.getPayment(id) : null;
+  return { customers, tickets, payments, payment };
+}
+
 export function PaymentFormScreen() {
   const { id, customerId } = useLocalSearchParams<{ id?: string; customerId?: string }>();
-  return <PaymentFormPage key={id ?? customerId ?? 'new'} id={id} initialCustomerId={customerId} />;
+  const { t } = useLedgerTranslations();
+  useDirtyFormGuard();
+  useTopBarOptions({ title: id ? t.editPayment : t.collect });
+  const loadForm = useCallback(() => loadPaymentForm(id), [id]);
+  const query = useLedgerQuery(loadForm, [id]);
+
+  if (query.status === 'loading') {
+    return (
+      <ScreenScroll>
+        <SkeletonRows variant="tile" count={3} />
+      </ScreenScroll>
+    );
+  }
+  const isMissing = Boolean(id) && (!query.data?.payment || Boolean(query.data.payment.voidedAt));
+  if (!query.data || isMissing) {
+    return (
+      <ScreenScroll>
+        <InfoBanner
+          tone="error"
+          title={query.status === 'error' ? query.error : t.recordUnavailable}
+          actionLabel={query.status === 'error' ? t.retry : undefined}
+          onAction={query.retry}
+        />
+      </ScreenScroll>
+    );
+  }
+  return <PaymentFormPage key={id ?? customerId ?? 'new'} initialCustomerId={customerId} initial={query.data} />;
 }
+
+const PAYMENT_FIELDS = ['customer', 'amount'] as const;
 
 function parseAmountOrNull(value: string): number | null {
   try {
@@ -37,39 +82,12 @@ function parseAmountOrNull(value: string): number | null {
   }
 }
 
-function loadInitial(id: string | undefined) {
-  const customers = listCustomers('', true);
-  const tickets = ticketRepository.listTickets();
-  const payments = paymentRepository.listPayments();
-  const payment = id ? paymentRepository.getPayment(id) : null;
-  return { customers, tickets, payments, payment };
-}
-
-function PaymentFormPage({ id, initialCustomerId }: { id?: string; initialCustomerId?: string }) {
+function PaymentFormPage({ initialCustomerId, initial }: { initialCustomerId?: string; initial: PaymentFormData }) {
   const { t, language } = useLedgerTranslations();
   const dispatch = useDispatch();
-  useDirtyFormGuard();
-  useTopBarOptions({ title: id ? t.editPayment : t.collect });
-
-  const [initial] = useState(() => {
-    try {
-      const data = loadInitial(id);
-      const missing = Boolean(id) && (!data.payment || data.payment.voidedAt);
-      return { ...data, error: missing ? t.loadFailed : '' };
-    } catch (cause) {
-      return {
-        customers: [] as Customer[],
-        tickets: [] as Ticket[],
-        payments: [] as Payment[],
-        payment: null as Payment | null,
-        error: getLedgerErrorMessage(cause, t, t.loadFailed),
-      };
-    }
-  });
   const editedPayment = initial.payment && !initial.payment.voidedAt ? initial.payment : null;
   const lockedWalkInPayment = Boolean(editedPayment && editedPayment.paymentKind === 'AT_SALE' && isWalkInCustomer(editedPayment.customerId));
 
-  // Balances ignore the payment being edited, so its own amount is available again.
   const otherPayments = useMemo(
     () => (editedPayment ? initial.payments.filter((payment) => payment.id !== editedPayment.id) : initial.payments),
     [editedPayment, initial.payments],
@@ -99,20 +117,34 @@ function PaymentFormPage({ id, initialCustomerId }: { id?: string; initialCustom
   const [customerId, setCustomerId] = useState(startCustomer);
   const [ticketId, setTicketId] = useState(startTicket);
   const [amountText, setAmountText] = useState(startAmount);
-  const [customerSheet, setCustomerSheet] = useState(!editedPayment && !startCustomer && !initial.error);
+  const [customerSheet, setCustomerSheet] = useState(!editedPayment && !startCustomer);
   const [ticketSheet, setTicketSheet] = useState(false);
-  const [error, setError] = useState(initial.error);
 
   const payable = payableFor(customerId);
   const selected = payable.find((item) => item.ticket.id === ticketId) ?? null;
   const customer = debtors.find((debtor) => debtor.customerId === customerId) ?? null;
   const amountMillimes = parseAmountOrNull(amountText);
-  const amountError =
+  const liveAmountError =
     amountText !== '' && amountMillimes === null
       ? t.invalidAmount
       : selected && amountMillimes !== null && amountMillimes > selected.remainingMillimes
         ? t.paymentExceedsBalance
         : undefined;
+
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const fieldErrors = useFieldErrors({
+    fieldOrder: PAYMENT_FIELDS,
+    validate: () => ({
+      customer: !customerId ? t.customerRequired : selected ? undefined : t.noUnpaidTickets,
+      amount: selected ? (amountText.trim() ? liveAmountError : t.fieldRequired) : undefined,
+    }),
+    fieldErrorFor: ledgerFieldErrorFor(
+      { paymentCustomerMismatch: 'customer', paymentExceedsBalance: 'amount', invalidAmount: 'amount' },
+      t,
+    ),
+    scrollRef,
+  });
+  const amountError = liveAmountError ?? fieldErrors.errorOf('amount');
 
   useEffect(() => {
     dispatch(setFormDirty({ section: 'payments', isDirty: amountText !== startAmount || customerId !== startCustomer }));
@@ -126,6 +158,8 @@ function PaymentFormPage({ id, initialCustomerId }: { id?: string; initialCustom
 
   function chooseCustomer(nextId: string): void {
     setCustomerId(nextId);
+    fieldErrors.fieldChanged('customer');
+    fieldErrors.fieldChanged('amount');
     setCustomerSheet(false);
     const first = payableFor(nextId)[0];
     setTicketId(first?.ticket.id ?? '');
@@ -145,46 +179,46 @@ function PaymentFormPage({ id, initialCustomerId }: { id?: string; initialCustom
     router.replace('/ledger/payments');
   }
 
-  function save(): void {
-    try {
-      if (!ticketId) throw new Error(t.selectTicket);
+  const amountLabel = amountMillimes !== null ? formatMillimeAmount(amountMillimes, language) : '';
+
+  const saveAction = useAsyncAction(() => ({
+    checkFields: fieldErrors.checkFields,
+    showFieldError: fieldErrors.showReportedError,
+    work: () => {
       const input = { ticketId, customerId, amountMillimes: parseMillimes(amountText) };
-      if (editedPayment) paymentRepository.updatePayment(editedPayment.id, input);
-      else paymentRepository.createPayment(input);
-      finish();
-    } catch (cause) {
-      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
-    }
-  }
+      return editedPayment ? paymentRepository.updatePayment(editedPayment.id, input) : paymentRepository.createPayment(input);
+    },
+    loaderLabel: t.savingPayment,
+    loaderDetail: customer ? `${customer.displayLabel} · ${amountLabel}` : amountLabel,
+    successToast: { title: t.paymentSavedToast, detail: formatMessage(t.amountCollected, { amount: amountLabel }) },
+    onSuccess: finish,
+    failureThing: t.thingPayment,
+    keepValuesMessage: t.valuesKept,
+  }));
 
-  function voidPayment(): void {
-    if (!editedPayment) return;
-    try {
-      paymentRepository.voidPayment(editedPayment.id);
-      finish();
-    } catch (cause) {
-      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
-    }
-  }
+  const voidAction = useAsyncAction(() => ({
+    work: () => paymentRepository.voidPayment(editedPayment?.id ?? ''),
+    loaderLabel: t.voidingPayment,
+    loaderDetail: amountLabel || null,
+    successToast: { title: t.paymentVoidedToast },
+    onSuccess: finish,
+    failureThing: t.thingPayment,
+    keepValuesMessage: t.nothingChanged,
+  }));
 
-  const canSave = Boolean(selected) && amountMillimes !== null && !amountError && !lockedWalkInPayment;
   const footer = (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !canSave }}
-      disabled={!canSave}
-      className={`ui-button-paid min-h-button-lg ${canSave ? '' : 'ui-button-disabled'}`}
-      onPress={save}
-    >
-      <Text className="type-button text-surface">
-        {amountMillimes !== null ? formatMessage(t.saveAmount, { amount: formatMillimeAmount(amountMillimes, language) }) : t.save}
-      </Text>
-    </Pressable>
+    <BusyButton
+      variant="paid"
+      label={amountMillimes !== null ? formatMessage(t.saveAmount, { amount: amountLabel }) : t.save}
+      busy={saveAction.busy}
+      disabled={lockedWalkInPayment || voidAction.busy}
+      className="min-h-button-lg"
+      onPress={() => void saveAction.run()}
+    />
   );
 
   return (
-    <ScreenScroll footer={footer} footerWithSafeArea>
-      {error ? <InfoBanner tone="error" title={error} /> : null}
+    <ScreenScroll footer={footer} footerWithSafeArea scrollRef={scrollRef}>
       {lockedWalkInPayment ? <InfoBanner tone="warning" title={t.walkInLocked} /> : null}
       <PaymentForm
         customer={customer}
@@ -193,11 +227,20 @@ function PaymentFormPage({ id, initialCustomerId }: { id?: string; initialCustom
         amountText={amountText}
         amountMillimes={amountMillimes}
         amountError={amountError}
+        customerError={fieldErrors.errorOf('customer')}
+        customerRef={fieldErrors.register('customer')}
+        amountRef={fieldErrors.register('amount')}
         canChangeCustomer={!editedPayment}
         onChangeCustomer={() => setCustomerSheet(true)}
         onChangeTicket={() => setTicketSheet(true)}
-        onAmountTextChange={setAmountText}
-        onQuickAmount={(value) => setAmountText(formatMillimeInput(value))}
+        onAmountTextChange={(value) => {
+          setAmountText(value);
+          fieldErrors.fieldChanged('amount');
+        }}
+        onQuickAmount={(value) => {
+          setAmountText(formatMillimeInput(value));
+          fieldErrors.fieldChanged('amount');
+        }}
       />
       {editedPayment && !lockedWalkInPayment ? (
         <ConfirmAction
@@ -206,7 +249,9 @@ function PaymentFormPage({ id, initialCustomerId }: { id?: string; initialCustom
           message={t.confirmAction}
           confirmLabel={t.confirm}
           cancelLabel={t.cancel}
-          onConfirm={voidPayment}
+          busy={voidAction.busy}
+          busyLabel={t.voidingPayment}
+          onConfirm={() => void voidAction.run()}
         />
       ) : null}
 

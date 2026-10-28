@@ -18,18 +18,7 @@ const mocks = vi.hoisted(() => ({
   }),
 }));
 
-vi.mock('@/db', () => ({
-  getLedgerDatabase: vi.fn(),
-  withLedgerTransaction: vi.fn((operation: (db: unknown) => unknown, db: {
-    withTransactionSync: (callback: () => void) => void;
-  }) => {
-    let result: unknown;
-    db.withTransactionSync(() => {
-      result = operation(db);
-    });
-    return result;
-  }),
-}));
+vi.mock('@/db', () => import('@/test/ledgerDbModule'));
 vi.mock('./auditService', () => ({ appendAuditEvent: mocks.appendAuditEvent }));
 vi.mock('./pendingChangeService', () => ({
   createPendingChange: mocks.createPendingChange,
@@ -55,28 +44,29 @@ describe('PaymentRepository.createPayment', () => {
     mocks.inTransaction = false;
   });
 
-  it('persists the payment, audit entry and pending record within one transaction', () => {
+  it('persists the payment, audit entry and pending record within one transaction', async () => {
     const db = {
-      withTransactionSync(callback: () => void) {
+      async withTransactionAsync(callback: () => Promise<void>) {
         mocks.inTransaction = true;
         try {
-          callback();
+          await callback();
         } finally {
           mocks.inTransaction = false;
         }
       },
-      runSync() {
+      async runAsync() {
         if (!mocks.inTransaction) throw new Error('Payment was written outside transaction.');
         mocks.events.push('payment');
       },
     } as unknown as SQLite.SQLiteDatabase;
     const tickets = {
-      getTicket: vi.fn(() => ticket),
-      totalPaid: vi.fn(() => 0),
+      getTicket: vi.fn(async () => ticket),
+      totalPaid: vi.fn(async () => 0),
     } as unknown as TicketRepository;
+    Object.assign(tickets, { withinTransaction: () => tickets });
     const repository = new PaymentRepository(db, tickets);
 
-    const payment = repository.createPayment({
+    const payment = await repository.createPayment({
       ticketId: ticket.id,
       customerId: ticket.customerId,
       amountMillimes: 2000,

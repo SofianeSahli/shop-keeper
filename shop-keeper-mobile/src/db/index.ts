@@ -1,6 +1,9 @@
 import * as SQLite from 'expo-sqlite';
 
+import { runQueued } from './queue';
 import { initializeLedgerSchema, LEDGER_DATABASE_NAME } from './schema';
+
+export { runQueued };
 
 let ledgerDatabase: SQLite.SQLiteDatabase | null = null;
 let initializationError: Error | null = null;
@@ -25,11 +28,7 @@ export function openLedgerDatabase(): Promise<SQLite.SQLiteDatabase> {
       return db;
     } catch (error) {
       initializationError = error instanceof Error ? error : new Error(String(error));
-      try {
-        await db?.closeAsync();
-      } catch {
-        // Preserve the initialization failure that the recovery screen reports.
-      }
+      await db?.closeAsync().catch(() => undefined);
       throw initializationError;
     } finally {
       openingDatabase = null;
@@ -50,12 +49,21 @@ export function getLedgerDatabase(): SQLite.SQLiteDatabase {
 }
 
 export function withLedgerTransaction<T>(
-  operation: (db: SQLite.SQLiteDatabase) => T,
+  operation: (db: SQLite.SQLiteDatabase) => Promise<T>,
   db: SQLite.SQLiteDatabase = getLedgerDatabase(),
-): T {
-  let result!: T;
-  db.withTransactionSync(() => {
-    result = operation(db);
+): Promise<T> {
+  return runQueued(async () => {
+    let result!: T;
+    await db.withTransactionAsync(async () => {
+      result = await operation(db);
+    });
+    return result;
   });
-  return result;
+}
+
+export function accessLedger<T>(
+  read: (db: SQLite.SQLiteDatabase) => Promise<T>,
+  db: SQLite.SQLiteDatabase = getLedgerDatabase(),
+): Promise<T> {
+  return runQueued(() => read(db));
 }

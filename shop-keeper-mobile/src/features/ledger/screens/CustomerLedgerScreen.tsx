@@ -1,19 +1,34 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
-import { getLedgerErrorMessage } from '@/i18n/errorMessages';
+import { useLedgerQuery } from '@/features/feedback/useLedgerQuery';
 import { formatMessage } from '@/i18n/format';
 import { formatMillimeAmount, formatShortDate } from '@/lib/money';
-import { AmountText, DayHeader, EmptyState, Icon, InfoBanner, ListRow, ScreenScroll, StatusChip } from '@/components/ui';
+import {
+  AmountText,
+  DayHeader,
+  EmptyState,
+  Icon,
+  InfoBanner,
+  ListRow,
+  RefreshingPill,
+  ScreenScroll,
+  SkeletonRows,
+  StatusChip,
+} from '@/components/ui';
 import { groupByLocalDay } from '@/components/ui/logic/dayGroups';
 import { useTopBarOptions } from '@/navigation/TopBarContext';
-import { CustomerLedgerEntry, DebtorSummary } from '../services/customerBalanceService';
 import { getCustomer } from '../services/customerService';
 import { getCustomerLedgerEntries, listDebtorSummaries } from '../services/ledgerReadService';
-import { Customer } from '../types/customer';
+
+async function loadCustomerLedger(customerId: string | undefined) {
+  const customer = customerId ? await getCustomer(customerId) : null;
+  if (!customer) return { customer: null, summary: null, entries: [] };
+  const summaries = await listDebtorSummaries();
+  const entries = await getCustomerLedgerEntries(customer.id);
+  return { customer, summary: summaries.find((item) => item.customerId === customer.id) ?? null, entries };
+}
 
 function EntryTile({ label, tone }: { label: string; tone: 'ticket' | 'payment' }) {
   return (
@@ -28,29 +43,12 @@ function EntryTile({ label, tone }: { label: string; tone: 'ticket' | 'payment' 
 export function CustomerLedgerScreen() {
   const { customerId } = useLocalSearchParams<{ customerId: string }>();
   const { t, language } = useLedgerTranslations();
-  const refreshVersion = useSelector((state: RootState) => state.ledger.refreshVersion);
-
-  const result = useMemo(() => {
-    try {
-      const customer = customerId ? getCustomer(customerId) : null;
-      return {
-        customer,
-        summary: listDebtorSummaries().find((item) => item.customerId === customerId) ?? null,
-        entries: customer ? getCustomerLedgerEntries(customer.id) : [],
-        error: customer ? '' : t.recordUnavailable,
-        version: refreshVersion,
-      };
-    } catch (cause) {
-      return {
-        customer: null as Customer | null,
-        summary: null as DebtorSummary | null,
-        entries: [] as CustomerLedgerEntry[],
-        error: getLedgerErrorMessage(cause, t, t.loadFailed),
-        version: refreshVersion,
-      };
-    }
-  }, [customerId, refreshVersion, t]);
-  const { customer, summary, entries } = result;
+  const loadLedger = useCallback(() => loadCustomerLedger(customerId), [customerId]);
+  const query = useLedgerQuery(loadLedger, [customerId]);
+  const customer = query.data?.customer ?? null;
+  const summary = query.data?.summary ?? null;
+  const entries = query.data?.entries ?? [];
+  const isMissing = query.status === 'ready' && !customer;
 
   const editCustomer = useCallback(() => {
     if (customerId) router.push({ pathname: '/ledger/customer-form', params: { id: customerId } });
@@ -64,14 +62,26 @@ export function CustomerLedgerScreen() {
   const balance = summary?.balanceMillimes ?? 0;
 
   return (
-    <ScreenScroll key={result.version}>
-      {result.error ? <InfoBanner tone="error" title={result.error} /> : null}
+    <ScreenScroll>
+      {query.status === 'error' ? (
+        <InfoBanner tone="error" title={query.error} actionLabel={t.retry} onAction={query.retry} />
+      ) : null}
+      {isMissing ? <InfoBanner tone="error" title={t.recordUnavailable} /> : null}
+      {query.status === 'loading' ? (
+        <>
+          <SkeletonRows variant="stat" count={1} />
+          <SkeletonRows variant="tile" count={4} />
+        </>
+      ) : null}
 
       {customer ? (
         <View className={`gap-3 rounded-card border p-4 ${balance > 0 ? 'border-debt-line bg-debt-soft' : 'border-line bg-surface'}`}>
           <View className="flex-row items-start gap-3">
             <View className="flex-1 gap-1">
-              <Text className={`type-label ${balance > 0 ? 'text-debt-strong' : ''}`}>{t.remaining}</Text>
+              <View className="flex-row flex-wrap items-center gap-2">
+                <Text className={`type-label ${balance > 0 ? 'text-debt-strong' : ''}`}>{t.remaining}</Text>
+                <RefreshingPill visible={query.status === 'refreshing'} />
+              </View>
               <AmountText millimes={balance} size="display-lg" tone={balance > 0 ? 'debt' : 'paid'} fitToWidth />
               {summary && summary.openTicketCount > 0 ? (
                 <Text className="type-caption text-debt-strong">

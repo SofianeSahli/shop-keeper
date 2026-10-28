@@ -88,7 +88,7 @@
   }
 
   .ui-input-error {
-    @apply border-[1.5px] border-debt;
+    @apply border-[1.5px] border-error;
   }
 
   .ui-fab-shadow {

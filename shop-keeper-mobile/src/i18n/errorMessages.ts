@@ -1,9 +1,8 @@
 import { getTranslations } from './index';
 
-type TranslationKey = keyof ReturnType<typeof getTranslations>;
+export type LedgerErrorKey = keyof ReturnType<typeof getTranslations>;
 
-const errorRules: [RegExp, TranslationKey][] = [
-  // Sale and walk-in rules (spec 003) come first: their messages also mention amounts and tickets.
+const errorRules: [RegExp, LedgerErrorKey][] = [
   [/walk-in/i, 'walkInLocked'],
   [/credit needs a customer/i, 'kridiNeedsCustomer'],
   [/partial amount equals the total/i, 'partialEqualsTotal'],
@@ -19,12 +18,34 @@ const errorRules: [RegExp, TranslationKey][] = [
   [/ticket|line|total/i, 'invalidTicket'],
 ];
 
+export function getLedgerErrorKey(cause: unknown): LedgerErrorKey | null {
+  const message = cause instanceof Error ? cause.message : '';
+  return errorRules.find(([pattern]) => pattern.test(message))?.[1] ?? null;
+}
+
 export function getLedgerErrorMessage(
   cause: unknown,
   translations: ReturnType<typeof getTranslations>,
   fallback: string = translations.operationFailed,
 ): string {
-  const message = cause instanceof Error ? cause.message : '';
-  const rule = errorRules.find(([pattern]) => pattern.test(message));
-  return rule ? translations[rule[1]] : fallback;
+  const key = getLedgerErrorKey(cause);
+  return key ? translations[key] : fallback;
+}
+
+const FIELD_VALIDATION_KEYS: ReadonlySet<LedgerErrorKey> = new Set<LedgerErrorKey>([
+  'requiredField',
+  'invalidAmount',
+  'invalidQuantity',
+  'invalidBarcode',
+  'duplicateBarcode',
+  'kridiNeedsCustomer',
+  'partialAmountInvalid',
+  'partialEqualsTotal',
+  'paymentExceedsBalance',
+  'paymentCustomerMismatch',
+]);
+
+export function getFieldValidationKey(cause: unknown): LedgerErrorKey | null {
+  const key = getLedgerErrorKey(cause);
+  return key && FIELD_VALIDATION_KEYS.has(key) ? key : null;
 }

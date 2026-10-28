@@ -2,6 +2,7 @@ import { Provider, useDispatch } from 'react-redux';
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   IBMPlexSansArabic_400Regular,
@@ -18,17 +19,20 @@ import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { languageChanged } from '@/features/ledger/store/ledgerSlice';
 import { TopBar } from '@/navigation/TopBar';
 import { BottomTabs } from '@/navigation/BottomTabs';
+import { BlockingLoader, ToastHost } from '@/components/ui';
 import { TopBarProvider } from '@/navigation/TopBarContext';
 import '../global.css';
 import '@/components/ui/interop';
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <Provider store={store}>
-        <RootContent />
-      </Provider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView className="flex-1">
+      <SafeAreaProvider>
+        <Provider store={store}>
+          <RootContent />
+        </Provider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -38,7 +42,6 @@ function RootContent() {
   const dispatch = useDispatch();
   const { t, language } = useLedgerTranslations();
   const directionClass = getTextDirection(language) === 'rtl' ? 'ledger-rtl' : 'ledger-ltr';
-  // A font that fails to load leaves the system font in place (spec edge case), so errors also unblock the app.
   const [fontsLoaded, fontError] = useFonts({
     IBMPlexSansArabic_400Regular,
     IBMPlexSansArabic_500Medium,
@@ -48,20 +51,18 @@ function RootContent() {
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus>('loading');
 
   const openDatabase = useCallback((isActive: () => boolean = () => true) => {
-    void openLedgerDatabase().then(
-      () => {
-        if (!isActive()) return;
-        try {
-          dispatch(languageChanged(getSavedLanguage()));
+    void openLedgerDatabase()
+      .then(getSavedLanguage)
+      .then(
+        (savedLanguage) => {
+          if (!isActive()) return;
+          dispatch(languageChanged(savedLanguage));
           setDatabaseStatus('ready');
-        } catch {
-          setDatabaseStatus('failed');
-        }
-      },
-      () => {
-        if (isActive()) setDatabaseStatus('failed');
-      },
-    );
+        },
+        () => {
+          if (isActive()) setDatabaseStatus('failed');
+        },
+      );
   }, [dispatch]);
 
   useEffect(() => {
@@ -106,9 +107,11 @@ function RootContent() {
         <TopBar />
         <View className="flex-1">
           <Stack screenOptions={{ headerShown: false }} />
+          <ToastHost />
         </View>
         <BottomTabs />
       </View>
+      <BlockingLoader />
     </TopBarProvider>
   );
 }

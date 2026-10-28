@@ -9,29 +9,31 @@ function toInputs(params: Params): SQLInputValue[] {
   return values.map((value) => (value === undefined ? null : value)) as SQLInputValue[];
 }
 
-/**
- * In-memory ledger database for tests: the expo-sqlite methods the app uses, backed by Node's
- * built-in SQLite, with the real schema. Lets tests check transactions and rollbacks for real.
- */
 export function createTestLedgerDb(): SQLite.SQLiteDatabase {
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec(LEDGER_SCHEMA_SQL);
 
+  const runSync = (sql: string, ...params: Params) => {
+    const result = db.prepare(sql).run(...toInputs(params));
+    return { changes: Number(result.changes), lastInsertRowId: Number(result.lastInsertRowid) };
+  };
+  const getFirstSync = (sql: string, ...params: Params) => db.prepare(sql).get(...toInputs(params)) ?? null;
+  const getAllSync = (sql: string, ...params: Params) => db.prepare(sql).all(...toInputs(params));
+
   const adapter = {
     execSync: (sql: string) => db.exec(sql),
     execAsync: async (sql: string) => db.exec(sql),
-    runSync: (sql: string, ...params: Params) => {
-      const result = db.prepare(sql).run(...toInputs(params));
-      return { changes: Number(result.changes), lastInsertRowId: Number(result.lastInsertRowid) };
-    },
-    getFirstSync: (sql: string, ...params: Params) => db.prepare(sql).get(...toInputs(params)) ?? null,
-    getAllSync: (sql: string, ...params: Params) => db.prepare(sql).all(...toInputs(params)),
-    getAllAsync: async (sql: string, ...params: Params) => db.prepare(sql).all(...toInputs(params)),
-    withTransactionSync: (task: () => void) => {
+    runSync,
+    runAsync: async (sql: string, ...params: Params) => runSync(sql, ...params),
+    getFirstSync,
+    getFirstAsync: async (sql: string, ...params: Params) => getFirstSync(sql, ...params),
+    getAllSync,
+    getAllAsync: async (sql: string, ...params: Params) => getAllSync(sql, ...params),
+    withTransactionAsync: async (task: () => Promise<void>) => {
       db.exec('BEGIN');
       try {
-        task();
+        await task();
         db.exec('COMMIT');
       } catch (error) {
         db.exec('ROLLBACK');

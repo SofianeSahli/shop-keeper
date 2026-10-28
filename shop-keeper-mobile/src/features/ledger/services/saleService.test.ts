@@ -10,18 +10,7 @@ import { buildTicketFromDraft } from './ticketService';
 import { TicketRepository } from './ticketRepository';
 import * as paymentRecords from './paymentRecords';
 
-vi.mock('@/db', () => ({
-  getLedgerDatabase: () => {
-    throw new Error('Tests pass their database explicitly.');
-  },
-  withLedgerTransaction: <T>(operation: (db: SQLite.SQLiteDatabase) => T, db: SQLite.SQLiteDatabase): T => {
-    let result!: T;
-    db.withTransactionSync(() => {
-      result = operation(db);
-    });
-    return result;
-  },
-}));
+vi.mock('@/db', () => import('@/test/ledgerDbModule'));
 vi.mock('@/lib/id', () => ({ createId: () => randomUUID() }));
 
 const PAID: SalePaymentChoice = { kind: 'PAID' };
@@ -79,16 +68,16 @@ describe('recordSale', () => {
   ];
   const pending = (entityType: string) => countRows(db, 'pending_changes', "entity_type = ? AND status = 'pending'", entityType);
 
-  beforeEach(() => {
+  beforeEach(async () => {
     db = createTestLedgerDb();
-    ensureWalkInCustomer(db);
+    await ensureWalkInCustomer(db);
     insertTestCustomer(db, 'ali', 'Ali');
     tickets = new TicketRepository(db);
   });
 
-  it('saves a paid walk-in sale with an AT_SALE payment dated at the ticket', () => {
+  it('saves a paid walk-in sale with an AT_SALE payment dated at the ticket', async () => {
     const ticket = buildTicketFromDraft(WALK_IN_CUSTOMER_ID, draft(1250, 2));
-    const result = recordSale(ticket, PAID, tickets);
+    const result = await recordSale(ticket, PAID, tickets);
 
     expect(result.ticket.status).toBe('PAID');
     expect(result.payment).toMatchObject({
@@ -101,39 +90,37 @@ describe('recordSale', () => {
     expect(countRows(db, 'payments', "payment_kind = 'AT_SALE'")).toBe(1);
   });
 
-  it('logs every write for the future sync and the audit trail (FR-021, SC-009)', () => {
-    recordSale(buildTicketFromDraft('ali', draft(7900)), partial(3000), tickets);
+  it('logs every write for the future sync and the audit trail (FR-021, SC-009)', async () => {
+    await recordSale(buildTicketFromDraft('ali', draft(7900)), partial(3000), tickets);
     expect(pending('ticket')).toBe(1);
     expect(pending('payment')).toBe(1);
     expect(countRows(db, 'ledger_audit_events', "action = 'create'")).toBe(2);
   });
 
-  it('leaves a partial sale partially paid with the remainder owed', () => {
-    const result = recordSale(buildTicketFromDraft('ali', draft(7900)), partial(3000), tickets);
+  it('leaves a partial sale partially paid with the remainder owed', async () => {
+    const result = await recordSale(buildTicketFromDraft('ali', draft(7900)), partial(3000), tickets);
     expect(result.ticket.status).toBe('PARTIALLY_PAID');
-    expect(tickets.totalPaid(result.ticket.id)).toBe(3000);
+    expect(await tickets.totalPaid(result.ticket.id)).toBe(3000);
   });
 
-  it('creates no payment for kridi', () => {
-    const result = recordSale(buildTicketFromDraft('ali', draft(1000)), UNPAID, tickets);
+  it('creates no payment for kridi', async () => {
+    const result = await recordSale(buildTicketFromDraft('ali', draft(1000)), UNPAID, tickets);
     expect(result.ticket.status).toBe('UNPAID');
     expect(result.payment).toBeNull();
     expect(countRows(db, 'payments')).toBe(0);
     expect(pending('payment')).toBe(0);
   });
 
-  it('refuses credit for the walk-in customer and writes nothing', () => {
-    expect(() => recordSale(buildTicketFromDraft(WALK_IN_CUSTOMER_ID, draft(1000)), UNPAID, tickets)).toThrow(
+  it('refuses credit for the walk-in customer and writes nothing', async () => {
+    await expect(recordSale(buildTicketFromDraft(WALK_IN_CUSTOMER_ID, draft(1000)), UNPAID, tickets)).rejects.toThrow(
       /credit needs a customer/i,
     );
     expect(countRows(db, 'tickets')).toBe(0);
   });
 
-  it('keeps nothing when the payment write fails (US8-AS6)', () => {
-    const spy = vi.spyOn(paymentRecords, 'insertPaymentRecords').mockImplementation(() => {
-      throw new Error('disk full');
-    });
-    expect(() => recordSale(buildTicketFromDraft('ali', draft(7900)), PAID, tickets)).toThrow('disk full');
+  it('keeps nothing when the payment write fails (US8-AS6)', async () => {
+    const spy = vi.spyOn(paymentRecords, 'insertPaymentRecords').mockRejectedValue(new Error('disk full'));
+    await expect(recordSale(buildTicketFromDraft('ali', draft(7900)), PAID, tickets)).rejects.toThrow('disk full');
     spy.mockRestore();
     expect(countRows(db, 'tickets')).toBe(0);
     expect(countRows(db, 'ticket_lines')).toBe(0);

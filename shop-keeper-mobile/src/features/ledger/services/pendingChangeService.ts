@@ -1,5 +1,5 @@
 import type * as SQLite from 'expo-sqlite';
-import { getLedgerDatabase } from '@/db';
+import { getLedgerDatabase, accessLedger } from '@/db';
 import { PendingChange, PendingChangeOperation, PendingChangeStatus } from '../types/pending-change';
 import { createId } from '@/lib/id';
 
@@ -34,11 +34,11 @@ export function createPendingChange(
   };
 }
 
-export function persistPendingChange(
+export async function persistPendingChange(
   change: PendingChange,
   db: SQLite.SQLiteDatabase = getLedgerDatabase(),
-): void {
-  db.runSync(
+): Promise<void> {
+  await db.runAsync(
     `INSERT INTO pending_changes
        (id, entity_type, entity_id, operation, payload_json, status, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
@@ -53,9 +53,9 @@ export function persistPendingChange(
   );
 }
 
-export function listPendingChanges(): PendingChange[] {
-  const rows = getLedgerDatabase().getAllSync<PendingChangeRow>(
-    `SELECT * FROM pending_changes WHERE status = 'pending' ORDER BY created_at;`,
+export async function listPendingChanges(): Promise<PendingChange[]> {
+  const rows = await accessLedger((db) =>
+    db.getAllAsync<PendingChangeRow>(`SELECT * FROM pending_changes WHERE status = 'pending' ORDER BY created_at;`),
   );
   return rows.map((row) => ({
     id: row.id,

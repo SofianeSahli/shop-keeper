@@ -2,12 +2,8 @@
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
-  // Light palette only (dark mode is out of scope for 003). `class` stops NativeWind from following the
-  // system color scheme, which throws when the scheme changes while dark mode is media-based.
   darkMode: 'class',
   theme: {
-    // Design tokens only (specs/003-ledger-visual-redesign/design-reference.md §1). Replacing the
-    // default palette means a non-token color class simply does not exist (spec SC-001).
     colors: {
       transparent: 'transparent',
       current: 'currentColor',
@@ -22,16 +18,23 @@ module.exports = {
       primary: '#164E9C',
       'primary-soft': '#DCE8F7',
       'primary-faint': '#EEF4FC',
+      'primary-line': '#B7CDEB',
       debt: '#9A3412',
       'debt-strong': '#7C2D12',
       'debt-soft': '#FDEBDD',
       'debt-line': '#F6CFAE',
       paid: '#0F5F57',
       'paid-soft': '#DDF3EE',
+      'paid-line': '#A9DCD2',
       partial: '#854D0E',
       'partial-soft': '#FEF3C7',
       'partial-line': '#F3D27A',
       'warn-strong': '#713F12',
+      error: '#A3221A',
+      'error-soft': '#FDE8E6',
+      'error-line': '#F4BDB7',
+      'error-strong': '#6B1F18',
+      skeleton: '#E6EBE9',
       scrim: 'rgba(15,31,26,0.45)',
       viewfinder: '#0B1411',
       'scan-line': '#F59E0B',
@@ -40,6 +43,8 @@ module.exports = {
       borderRadius: {
         card: '18px',
         tile: '20px',
+        toast: '16px',
+        loader: '20px',
         control: '14px',
         'control-lg': '16px',
       },
@@ -58,12 +63,24 @@ module.exports = {
         label: ['13px', '18px'],
         caption: ['12.5px', '17px'],
         tab: ['12px', '16px'],
+        'loader-title': ['17px', '24px'],
+        'loader-detail': ['13.5px', '19px'],
       },
       minHeight: {
         touch: '44px',
         button: '52px',
         'button-lg': '56px',
         row: '60px',
+        toast: '64px',
+      },
+      keyframes: {
+        'toast-in': {
+          '0%': { opacity: '0', transform: 'translateY(-16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0px)' },
+        },
+      },
+      animation: {
+        'toast-in': 'toast-in 220ms ease-out',
       },
       minWidth: {
         touch: '44px',

@@ -1,13 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View } from 'react-native';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
-import { getLedgerErrorMessage } from '@/i18n/errorMessages';
+import { useLedgerQuery } from '@/features/feedback/useLedgerQuery';
 import { formatMessage } from '@/i18n/format';
 import { formatShortDate } from '@/lib/money';
-import { AmountText, Avatar, EmptyState, Fab, FilterChips, InfoBanner, ListRow, ScreenScroll, SearchField } from '@/components/ui';
+import {
+  AmountText,
+  Avatar,
+  EmptyState,
+  Fab,
+  FilterChips,
+  InfoBanner,
+  ListRow,
+  RefreshingPill,
+  ScreenScroll,
+  SearchField,
+  SkeletonRows,
+} from '@/components/ui';
 import { DebtorSummary, getCustomerFilterCounts } from '../services/customerBalanceService';
 import { listDebtorSummaries } from '../services/ledgerReadService';
 
@@ -22,23 +32,16 @@ function isCustomerFilter(value: unknown): value is CustomerFilter {
 export function CustomerListScreen() {
   const { t, language } = useLedgerTranslations();
   const params = useLocalSearchParams<{ filter?: string }>();
-  const refreshVersion = useSelector((state: RootState) => state.ledger.refreshVersion);
   const [filter, setFilter] = useState<CustomerFilter>(isCustomerFilter(params.filter) ? params.filter : 'owes');
   const [search, setSearch] = useState('');
-  // Reference time for the "n days" meta line, read once per visit.
   const [now] = useState(() => Date.now());
 
-  const result = useMemo(() => {
-    try {
-      return { summaries: listDebtorSummaries(), error: '', version: refreshVersion };
-    } catch (cause) {
-      return { summaries: [] as DebtorSummary[], error: getLedgerErrorMessage(cause, t, t.loadFailed), version: refreshVersion };
-    }
-  }, [refreshVersion, t]);
+  const debtors = useLedgerQuery(listDebtorSummaries);
+  const summaries = debtors.data ?? [];
 
-  const counts = getCustomerFilterCounts(result.summaries);
+  const counts = getCustomerFilterCounts(summaries);
   const query = search.trim().toLocaleLowerCase();
-  const visible = result.summaries.filter((summary) => {
+  const visible = summaries.filter((summary) => {
     if (filter === 'owes' && summary.balanceMillimes === 0) return false;
     if (filter === 'upToDate' && summary.balanceMillimes > 0) return false;
     return !query || summary.displayLabel.toLocaleLowerCase().includes(query) || (summary.phoneNumber ?? '').includes(query);
@@ -54,7 +57,7 @@ export function CustomerListScreen() {
 
   return (
     <View className="flex-1">
-      <ScreenScroll key={result.version}>
+      <ScreenScroll>
         <SearchField value={search} onChangeText={setSearch} placeholder={t.customerSearchPlaceholder} />
         <FilterChips
           options={[
@@ -66,13 +69,19 @@ export function CustomerListScreen() {
           onChange={setFilter}
           accessibilityLabel={t.customers}
         />
-        <Text className="type-caption">{t.sortedByDebt}</Text>
-        {result.error ? <InfoBanner tone="error" title={result.error} /> : null}
-        {visible.length === 0 && !result.error ? (
+        <View className="flex-row items-center justify-between gap-2">
+          <Text className="type-caption">{t.sortedByDebt}</Text>
+          <RefreshingPill visible={debtors.status === 'refreshing'} />
+        </View>
+        {debtors.status === 'error' ? (
+          <InfoBanner tone="error" title={debtors.error} actionLabel={t.retry} onAction={debtors.retry} />
+        ) : null}
+        {debtors.status === 'loading' ? <SkeletonRows count={5} /> : null}
+        {visible.length === 0 && debtors.status === 'ready' ? (
           <EmptyState
             icon={filter === 'owes' && !query ? 'happy-outline' : 'people-outline'}
             message={filter === 'owes' && !query ? t.nobodyOwes : t.emptyCustomers}
-            actionLabel={result.summaries.length === 0 ? t.newCustomer : undefined}
+            actionLabel={summaries.length === 0 ? t.newCustomer : undefined}
             onAction={() => router.push('/ledger/customer-form')}
           />
         ) : null}

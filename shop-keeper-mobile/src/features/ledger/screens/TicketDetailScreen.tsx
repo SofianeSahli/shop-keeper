@@ -1,13 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useCallback } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store';
+import { useDispatch } from 'react-redux';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
-import { getLedgerErrorMessage } from '@/i18n/errorMessages';
+import { useAsyncAction } from '@/features/feedback/useAsyncAction';
+import { useLedgerQuery } from '@/features/feedback/useLedgerQuery';
 import { formatMessage } from '@/i18n/format';
 import { formatLedgerDate, formatMillimeAmount } from '@/lib/money';
-import { AmountText, Icon, InfoBanner, ListRow, ScreenScroll, StatusChip, isolateLtr } from '@/components/ui';
+import {
+  AmountText,
+  Icon,
+  InfoBanner,
+  ListRow,
+  RefreshingPill,
+  ScreenScroll,
+  SkeletonRows,
+  StatusChip,
+  isolateLtr,
+} from '@/components/ui';
 import { useTopBarOptions } from '@/navigation/TopBarContext';
 import { refreshCompleted } from '../store/ledgerSlice';
 import { ConfirmAction } from '../components/feedback/ConfirmAction';
@@ -18,64 +28,69 @@ import { listCustomers } from '../services/customerService';
 import { paymentRepository } from '../services/paymentRepository';
 import { ticketRepository } from '../services/ticketRepository';
 
+async function loadTicketDetail(id: string) {
+  const ticket = await ticketRepository.getTicket(id);
+  const allPayments = await paymentRepository.listPayments(undefined, true);
+  const customers = await listCustomers('', true);
+  const auditEvents = await listAuditEvents('ticket', id);
+  return { ticket, payments: allPayments.filter((payment) => payment.ticketId === id), customers, auditEvents };
+}
+
 export function TicketDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t, language } = useLedgerTranslations();
   const dispatch = useDispatch();
-  const refreshVersion = useSelector((state: RootState) => state.ledger.refreshVersion);
-  const [error, setError] = useState('');
-  const result = useMemo(() => {
-    try {
-      return {
-        ticket: ticketRepository.getTicket(id),
-        payments: paymentRepository.listPayments(undefined, true).filter((payment) => payment.ticketId === id),
-        customers: listCustomers('', true),
-        auditEvents: listAuditEvents('ticket', id),
-        error: '',
-        version: refreshVersion,
-      };
-    } catch (cause) {
-      return {
-        ticket: null,
-        payments: [],
-        customers: [],
-        auditEvents: [],
-        error: getLedgerErrorMessage(cause, t, t.loadFailed),
-        version: refreshVersion,
-      };
-    }
-  }, [id, refreshVersion, t]);
-  const { ticket, payments, auditEvents } = result;
+  const loadDetail = useCallback(() => loadTicketDetail(id), [id]);
+  const query = useLedgerQuery(loadDetail, [id]);
+  const voidAction = useAsyncAction(() => ({
+    work: () => ticketRepository.voidTicket(id),
+    loaderLabel: t.voidingTicket,
+    successToast: { title: t.ticketVoidedToast },
+    onSuccess: () => dispatch(refreshCompleted()),
+    failureThing: t.thingTicket,
+    keepValuesMessage: t.nothingChanged,
+  }));
   useTopBarOptions({ title: t.ticketDetails });
 
-  if (!ticket) {
+  if (query.status === 'loading') {
     return (
       <ScreenScroll>
-        <InfoBanner tone="error" title={result.error || t.recordUnavailable} />
+        <SkeletonRows variant="stat" count={1} />
+        <SkeletonRows variant="tile" count={3} />
       </ScreenScroll>
     );
   }
 
-  const customerLabel = getCustomerLabel(ticket.customerId, result.customers, t);
+  const ticket = query.data?.ticket;
+  if (!ticket) {
+    return (
+      <ScreenScroll>
+        {query.status === 'error' ? (
+          <InfoBanner tone="error" title={query.error} actionLabel={t.retry} onAction={query.retry} />
+        ) : (
+          <InfoBanner tone="error" title={t.recordUnavailable} />
+        )}
+      </ScreenScroll>
+    );
+  }
+
+  const payments = query.data?.payments ?? [];
+  const auditEvents = query.data?.auditEvents ?? [];
+  const customerLabel = getCustomerLabel(ticket.customerId, query.data?.customers ?? [], t);
   const activePayments = payments.filter((payment) => !payment.voidedAt);
   const paid = activePayments.reduce((sum, payment) => sum + payment.amountMillimes, 0);
   const remaining = Math.max(ticket.totalMillimes - paid, 0);
   const hasSalePayment = activePayments.some((payment) => payment.paymentKind === 'AT_SALE');
   const canCollect = !ticket.voidedAt && remaining > 0 && !isWalkInCustomer(ticket.customerId);
 
-  function voidTicket(): void {
-    try {
-      ticketRepository.voidTicket(id);
-      dispatch(refreshCompleted());
-      setError('');
-    } catch (cause) {
-      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
-    }
-  }
-
   return (
-    <ScreenScroll key={result.version}>
-      {error ? <InfoBanner tone="error" title={error} /> : null}
+    <ScreenScroll>
+      {query.status === 'error' ? (
+        <InfoBanner tone="error" title={query.error} actionLabel={t.retry} onAction={query.retry} />
+      ) : null}
+      <View className="items-end">
+        <RefreshingPill visible={query.status === 'refreshing'} />
+      </View>
       {ticket.voidedAt ? <InfoBanner tone="warning" title={t.void} text={formatLedgerDate(ticket.voidedAt, language)} /> : null}
 
       <View className="ui-card">
@@ -174,7 +189,9 @@ export function TicketDetailScreen() {
             confirmLabel={t.confirm}
             cancelLabel={t.cancel}
             icon="close-circle-outline"
-            onConfirm={voidTicket}
+            busy={voidAction.busy}
+            busyLabel={t.voidingTicket}
+            onConfirm={() => void voidAction.run()}
           />
         </View>
       ) : null}

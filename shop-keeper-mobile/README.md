@@ -67,6 +67,8 @@ npm run android         # ou : npm run ios / npm run web
 ```
 
 > Pour ajouter une dépendance, utilise toujours `npx expo install <paquet>` : il choisit la version compatible avec le SDK.
+> **Mode lent (développement).** `EXPO_PUBLIC_LEDGER_DELAY_MS=3000 npx expo start -c` ralentit chaque accès à la base de 3 s, pour voir les squelettes, le loader et le message « Ça prend plus de temps que prévu ». Sans effet dans un build de production.
+> **Outils de développement.** Dans un build de dev, un appui long sur le titre de la barre du haut lance une tâche de test en arrière-plan (toast « en cours »), et un appui long sur le logo ajoute 300 clients et 2 000 tickets de test.
 > La caméra demande un vrai appareil. Si tu ajoutes un module natif qui n'est pas inclus dans Expo Go, il faudra un *development build* (`npx expo run:android`).
 
 ### Scripts
@@ -91,6 +93,7 @@ src/
 │   ├── index.tsx           # Accueil → tableau de bord
 │   └── ledger/             # products, tickets, customers, payments, *-form, balances, history…
 ├── features/
+│   ├── feedback/           # useAsyncAction, useLedgerQuery, toasts, loader (slice Redux `feedback`)
 │   └── ledger/
 │       ├── screens/        # Écrans métier (montés par src/app/ledger/*)
 │       ├── components/     # Formulaires, sélecteurs, scanner, dialogues, états de feedback
@@ -99,7 +102,7 @@ src/
 │       ├── types/          # Customer, Product, Ticket, Payment, PendingChange
 │       └── styles/         # ledger.css (classes NativeWind)
 ├── navigation/             # TopBar, BottomTabs, LanguageMenu, registre des features
-├── db/                     # Schéma SQLite, migrations, ouverture
+├── db/                     # Schéma SQLite, migrations, ouverture, file d'attente (runQueued)
 ├── i18n/                   # Traductions fr / ar / en, direction RTL/LTR, langue sauvegardée
 ├── lib/                    # money.ts (millimes), id.ts (UUID)
 ├── store/                  # Store Redux global
@@ -109,7 +112,7 @@ src/
 ### Flux de données
 
 ```
-Écran ─► composant ─► service (règles métier) ─► repository ─► SQLite
+Écran ─► useAsyncAction / useLedgerQuery ─► service (règles métier) ─► repository ─► runQueued ─► SQLite (async)
                                     │
                                     └─► pending_changes   (journal pour la future synchro)
                                     └─► ledger_audit_events (historique des corrections)
@@ -134,7 +137,7 @@ Ces règles résument la [constitution](../.specify/memory/constitution.md).
 - **Direction.** Utiliser des classes adaptées au sens de lecture (`start` / `end`) plutôt que `left` / `right`.
 - **Styles.** Classes NativeWind ou fichiers `.css` dédiés. Pas de `StyleSheet` ni de style inline dans les TSX.
 - **Accessibilité.** `accessibilityLabel` et `accessibilityRole` sur chaque contrôle, zones tactiles d'au moins 48 px.
-- **États.** Chaque écran gère les cas chargement, vide, erreur et succès (`FeedbackState`).
+- **États.** Chaque écriture passe par `useAsyncAction` (bouton occupé, loader après 300 ms, toast de résultat, « Réessayer ») et chaque lecture par `useLedgerQuery` (squelettes, « Mise à jour… », erreur avec « Réessayer »). Un écran ne gère jamais son propre chargement.
 - **Hors ligne.** Aucun appel réseau dans les features 001 et 002 : les données restent sur l'appareil.
 
 ---
