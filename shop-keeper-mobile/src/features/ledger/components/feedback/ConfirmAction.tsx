@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
-import { Icon, IconName } from '@/components/ui';
+import { BusyButton, IconName } from '@/components/ui';
 
 interface ConfirmActionProps {
   buttonLabel: string;
@@ -10,9 +10,10 @@ interface ConfirmActionProps {
   cancelLabel: string;
   onConfirm: () => void;
   icon?: IconName;
+  busy?: boolean;
+  busyLabel?: string;
 }
 
-/** Destructive action behind a confirmation dialog; lives on detail and form screens, never in list rows. */
 export function ConfirmAction({
   buttonLabel,
   title,
@@ -21,18 +22,20 @@ export function ConfirmAction({
   cancelLabel,
   onConfirm,
   icon = 'trash-outline',
+  busy = false,
+  busyLabel,
 }: ConfirmActionProps) {
   const [visible, setVisible] = useState(false);
   return (
     <>
-      <Pressable
-        accessibilityRole="button"
-        className="ui-button border border-debt-line bg-surface active:bg-debt-soft"
+      <BusyButton
+        variant="danger"
+        icon={icon}
+        label={buttonLabel}
+        busy={busy}
+        busyLabel={busyLabel}
         onPress={() => setVisible(true)}
-      >
-        <Icon name={icon} size={20} className="text-debt" />
-        <Text className="type-button text-debt">{buttonLabel}</Text>
-      </Pressable>
+      />
       <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setVisible(false)}>
         <View className="flex-1 justify-center bg-scrim p-6">
           <View accessibilityViewIsModal className="gap-4 rounded-card bg-surface p-5">

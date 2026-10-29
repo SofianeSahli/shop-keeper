@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getLedgerErrorMessage } from './errorMessages';
+import { getFieldValidationKey, getLedgerErrorMessage } from './errorMessages';
 import { getTranslations } from './index';
 import { SALE_ERROR_MESSAGES } from '@/features/ledger/services/saleService';
 
@@ -29,5 +29,31 @@ describe('getLedgerErrorMessage for sale and walk-in rules', () => {
   it('keeps the existing mappings', () => {
     expect(message('Payment exceeds the outstanding ticket balance.')).toBe(t.paymentExceedsBalance);
     expect(message('Ticket total must equal the sum of its line totals.')).toBe(t.invalidTicket);
+  });
+});
+
+describe('getFieldValidationKey', () => {
+  it.each([
+    ['Product name is required.', 'requiredField'],
+    ['Customer display label is required.', 'requiredField'],
+    ['An active product already uses this barcode.', 'duplicateBarcode'],
+    ['Enter a valid amount with up to three decimal places.', 'invalidAmount'],
+    ['Ticket quantity must be a positive integer.', 'invalidQuantity'],
+    [SALE_ERROR_MESSAGES.kridiNeedsCustomer, 'kridiNeedsCustomer'],
+    [SALE_ERROR_MESSAGES.partialAmountInvalid, 'partialAmountInvalid'],
+    ['Payment exceeds the outstanding ticket balance.', 'paymentExceedsBalance'],
+  ])('treats "%s" as a field error (%s)', (text, key) => {
+    expect(getFieldValidationKey(new Error(text))).toBe(key);
+  });
+
+  it.each(['Product not found.', 'The walk-in customer cannot be changed.', 'disk I/O error', 'Ticket total must equal the sum of its line totals.'])(
+    'leaves "%s" to the error toast',
+    (text) => {
+      expect(getFieldValidationKey(new Error(text))).toBeNull();
+    },
+  );
+
+  it('returns null for values that are not errors', () => {
+    expect(getFieldValidationKey('oops')).toBeNull();
   });
 });

@@ -1,34 +1,29 @@
-import { useMemo } from 'react';
 import { Text, View } from 'react-native';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
-import { getLedgerErrorMessage } from '@/i18n/errorMessages';
+import { useLedgerQuery } from '@/features/feedback/useLedgerQuery';
 import { formatLedgerDate } from '@/lib/money';
-import { EmptyState, InfoBanner, ScreenScroll, isolateLtr } from '@/components/ui';
+import { EmptyState, InfoBanner, RefreshingPill, ScreenScroll, SkeletonRows, isolateLtr } from '@/components/ui';
 import { listAuditEvents } from '../services/auditService';
 
+function loadAllAuditEvents() {
+  return listAuditEvents();
+}
 
 export function LedgerHistoryScreen() {
   const { t, language } = useLedgerTranslations();
-  const refreshVersion = useSelector((state: RootState) => state.ledger.refreshVersion);
-  const result = useMemo(() => {
-    try {
-      return { events: listAuditEvents(), error: '', version: refreshVersion };
-    } catch (cause) {
-      return {
-        events: [],
-        error: getLedgerErrorMessage(cause, t, t.loadFailed),
-        version: refreshVersion,
-      };
-    }
-  }, [refreshVersion, t]);
-  const { events, error } = result;
+  const query = useLedgerQuery(loadAllAuditEvents);
+  const events = query.data ?? [];
 
   return (
-    <ScreenScroll key={result.version}>
-      {error ? <InfoBanner tone="error" title={error} /> : null}
-      {events.length === 0 && !error ? <EmptyState icon="time-outline" message={t.noHistory} /> : null}
+    <ScreenScroll>
+      <View className="items-end">
+        <RefreshingPill visible={query.status === 'refreshing'} />
+      </View>
+      {query.status === 'error' ? (
+        <InfoBanner tone="error" title={query.error} actionLabel={t.retry} onAction={query.retry} />
+      ) : null}
+      {query.status === 'loading' ? <SkeletonRows variant="tile" count={4} /> : null}
+      {events.length === 0 && query.status === 'ready' ? <EmptyState icon="time-outline" message={t.noHistory} /> : null}
       {events.map((event) => (
         <View key={event.id} className="ui-card gap-1.5">
           <Text className="type-body-strong">

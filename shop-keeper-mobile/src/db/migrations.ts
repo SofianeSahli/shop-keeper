@@ -43,18 +43,13 @@ export async function migrateLedgerDatabase(db: SQLite.SQLiteDatabase): Promise<
     CREATE INDEX IF NOT EXISTS idx_active_products_barcode
       ON products(barcode) WHERE is_active = 1 AND barcode IS NOT NULL;
   `);
-  ensureWalkInCustomer(db);
+  await ensureWalkInCustomer(db);
 }
 
-/**
- * Seeds the built-in walk-in customer once per device (spec 003, FR-017) and logs it for the
- * future server sync (FR-021). Idempotent; written with plain SQL so the db layer stays free of
- * feature services.
- */
-export function ensureWalkInCustomer(db: SQLite.SQLiteDatabase): void {
-  db.withTransactionSync(() => {
+export async function ensureWalkInCustomer(db: SQLite.SQLiteDatabase): Promise<void> {
+  await db.withTransactionAsync(async () => {
     const now = new Date().toISOString();
-    const inserted = db.runSync(
+    const inserted = await db.runAsync(
       `INSERT OR IGNORE INTO customers
          (id, internal_code, display_label, real_name, phone_number, is_active, created_at, updated_at)
        VALUES (?, ?, ?, NULL, NULL, 1, ?, ?);`,
@@ -75,7 +70,7 @@ export function ensureWalkInCustomer(db: SQLite.SQLiteDatabase): void {
       createdAt: now,
       updatedAt: now,
     };
-    db.runSync(
+    await db.runAsync(
       `INSERT INTO pending_changes
          (id, entity_type, entity_id, operation, payload_json, status, created_at, updated_at)
        VALUES (?, 'customer', ?, 'create', ?, 'pending', ?, ?);`,

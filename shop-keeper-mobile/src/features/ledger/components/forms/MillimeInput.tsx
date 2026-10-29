@@ -1,4 +1,5 @@
-import { KeyboardTypeOptions } from 'react-native';
+import { Ref } from 'react';
+import { KeyboardTypeOptions, TextInputInstance } from 'react-native';
 import { LedgerField } from './LedgerField';
 
 interface MillimeInputProps {
@@ -7,8 +8,8 @@ interface MillimeInputProps {
   onChangeText: (value: string) => void;
   error?: string;
   hint?: string;
-  /** Shows the currency after the value. */
   suffix?: string;
+  ref?: Ref<TextInputInstance>;
 }
 
 export function parseMillimes(value: string): number {
@@ -25,9 +26,19 @@ export function parseMillimes(value: string): number {
   return amount;
 }
 
-export function MillimeInput({ label, value, onChangeText, error, hint, suffix }: MillimeInputProps) {
+export function isValidMillimeText(value: string): boolean {
+  try {
+    parseMillimes(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function MillimeInput({ label, value, onChangeText, error, hint, suffix, ref }: MillimeInputProps) {
   return (
     <LedgerField
+      ref={ref}
       label={label}
       value={value}
       onChangeText={onChangeText}

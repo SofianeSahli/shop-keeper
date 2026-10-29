@@ -5,6 +5,8 @@ import { ledgerRepository, LedgerRepository } from './ledgerRepository';
 import { createPendingChange, persistPendingChange } from './pendingChangeService';
 import { createId } from '@/lib/id';
 
+const DUPLICATE_BARCODE = 'An active product already uses this barcode.';
+
 export function validateProductInput(input: Partial<ProductInput>): string[] {
   const errors: string[] = [];
 
@@ -51,22 +53,25 @@ export function updateProductRecord(existing: Product, input: ProductInput): Pro
   };
 }
 
-export function listProducts(search = '', repository: LedgerRepository = ledgerRepository): Product[] {
+export function listProducts(search = '', repository: LedgerRepository = ledgerRepository): Promise<Product[]> {
   return repository.listProducts(search);
 }
 
-export function getProduct(id: string, repository: LedgerRepository = ledgerRepository): Product | null {
+export function getProduct(id: string, repository: LedgerRepository = ledgerRepository): Promise<Product | null> {
   return repository.getProduct(id);
 }
 
-export function createProduct(input: ProductInput, repository: LedgerRepository = ledgerRepository): Product {
+export async function createProduct(
+  input: ProductInput,
+  repository: LedgerRepository = ledgerRepository,
+): Promise<Product> {
   const product = createProductRecord(input);
-  return repository.transaction((db) => {
-    if (product.barcode && repository.findActiveProductByBarcode(product.barcode)) {
-      throw new Error('An active product already uses this barcode.');
+  return repository.transaction(async (db, products) => {
+    if (product.barcode && (await products.findActiveProductByBarcode(product.barcode))) {
+      throw new Error(DUPLICATE_BARCODE);
     }
-    repository.saveProduct(product);
-    persistPendingChange(createPendingChange('product', product.id, 'create', { product }), db);
+    await products.saveProduct(product);
+    await persistPendingChange(createPendingChange('product', product.id, 'create', { product }), db);
     return product;
   });
 }
@@ -75,9 +80,9 @@ export function updateProduct(
   id: string,
   input: ProductInput,
   repository: LedgerRepository = ledgerRepository,
-): Product {
-  return repository.transaction((db) => {
-    const existing = repository.getProduct(id);
+): Promise<Product> {
+  return repository.transaction(async (db, products) => {
+    const existing = await products.getProduct(id);
     if (!existing) {
       throw new Error('Product not found.');
     }
@@ -85,19 +90,19 @@ export function updateProduct(
       throw new Error('Inactive products cannot be edited.');
     }
     const product = updateProductRecord(existing, input);
-    const duplicate = product.barcode && repository.findActiveProductByBarcode(product.barcode);
+    const duplicate = product.barcode ? await products.findActiveProductByBarcode(product.barcode) : null;
     if (duplicate && duplicate.id !== product.id) {
-      throw new Error('An active product already uses this barcode.');
+      throw new Error(DUPLICATE_BARCODE);
     }
-    repository.saveProduct(product);
-    persistPendingChange(createPendingChange('product', product.id, 'update', { product }), db);
+    await products.saveProduct(product);
+    await persistPendingChange(createPendingChange('product', product.id, 'update', { product }), db);
     return product;
   });
 }
 
-export function removeProduct(id: string, repository: LedgerRepository = ledgerRepository): Product {
-  return repository.transaction((db) => {
-    const product = repository.getProduct(id);
+export function removeProduct(id: string, repository: LedgerRepository = ledgerRepository): Promise<Product> {
+  return repository.transaction(async (db, products) => {
+    const product = await products.getProduct(id);
     if (!product) {
       throw new Error('Product not found.');
     }
@@ -105,8 +110,8 @@ export function removeProduct(id: string, repository: LedgerRepository = ledgerR
       throw new Error('Product is already inactive.');
     }
     const removed = softDeleteProduct(product);
-    repository.saveProduct(removed);
-    persistPendingChange(createPendingChange('product', id, 'soft_delete', { before: product, after: removed }), db);
+    await products.saveProduct(removed);
+    await persistPendingChange(createPendingChange('product', id, 'soft_delete', { before: product, after: removed }), db);
     return removed;
   });
 }

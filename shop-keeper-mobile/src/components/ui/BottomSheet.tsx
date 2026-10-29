@@ -2,6 +2,7 @@ import { PropsWithChildren } from 'react';
 import { KeyboardAvoidingView, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { getTextDirection } from '@/i18n';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
+import { BusyButton } from './BusyButton';
 import { Icon } from './Icon';
 
 interface BottomSheetProps extends PropsWithChildren {
@@ -12,6 +13,7 @@ interface BottomSheetProps extends PropsWithChildren {
   confirmLabel?: string;
   onConfirm?: () => void;
   confirmDisabled?: boolean;
+  confirmBusy?: boolean;
 }
 
 export function BottomSheet({
@@ -22,6 +24,7 @@ export function BottomSheet({
   confirmLabel,
   onConfirm,
   confirmDisabled = false,
+  confirmBusy = false,
   children,
 }: BottomSheetProps) {
   const { t, language } = useLedgerTranslations();
@@ -63,15 +66,7 @@ export function BottomSheet({
           </ScrollView>
           {confirmLabel && onConfirm ? (
             <View className="px-4 pt-1">
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ disabled: confirmDisabled }}
-                disabled={confirmDisabled}
-                className={`ui-button-primary ${confirmDisabled ? 'ui-button-disabled' : ''}`}
-                onPress={onConfirm}
-              >
-                <Text className="type-button text-surface">{confirmLabel}</Text>
-              </Pressable>
+              <BusyButton label={confirmLabel} busy={confirmBusy} disabled={confirmDisabled} onPress={onConfirm} />
             </View>
           ) : null}
         </View>

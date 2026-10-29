@@ -10,10 +10,8 @@ export { getLocalDateKey };
 
 export interface DashboardSummary {
   localDate: string;
-  /** Every non-voided ticket created today, whatever its payment status (SC-008). */
   todaySalesMillimes: number;
   todayTicketCount: number;
-  /** Unpaid remainders of all non-voided tickets. */
   outstandingBalanceMillimes: number;
   openTicketCount: number;
 }
@@ -48,14 +46,16 @@ export function summariseDashboard(
   return summary;
 }
 
-export function getDashboardSummary(date: Date = new Date()): DashboardSummary {
-  return summariseDashboard(ticketRepository.listTickets(), paymentRepository.listPayments(), date);
+export async function getDashboardSummary(date: Date = new Date()): Promise<DashboardSummary> {
+  const tickets = await ticketRepository.listTickets();
+  const payments = await paymentRepository.listPayments();
+  return summariseDashboard(tickets, payments, date);
 }
 
-export function getTodaySalesMillimes(date: Date = new Date()): number {
-  return getDashboardSummary(date).todaySalesMillimes;
+export async function getTodaySalesMillimes(date: Date = new Date()): Promise<number> {
+  return (await getDashboardSummary(date)).todaySalesMillimes;
 }
 
-export function getOutstandingBalanceMillimes(): number {
-  return getDashboardSummary().outstandingBalanceMillimes;
+export async function getOutstandingBalanceMillimes(): Promise<number> {
+  return (await getDashboardSummary()).outstandingBalanceMillimes;
 }

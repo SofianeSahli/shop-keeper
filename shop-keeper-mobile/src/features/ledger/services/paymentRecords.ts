@@ -27,8 +27,8 @@ export function mapPayment(row: PaymentRow): Payment {
   };
 }
 
-export function writePaymentRow(payment: Payment, db: SQLite.SQLiteDatabase): void {
-  db.runSync(
+export async function writePaymentRow(payment: Payment, db: SQLite.SQLiteDatabase): Promise<void> {
+  await db.runAsync(
     `INSERT INTO payments
        (id, ticket_id, customer_id, amount_millimes, payment_kind, applied_at, updated_at, voided_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -47,28 +47,29 @@ export function writePaymentRow(payment: Payment, db: SQLite.SQLiteDatabase): vo
   );
 }
 
-/** Writes a new payment with its audit event and operation-log entry. Call inside a transaction. */
-export function insertPaymentRecords(payment: Payment, db: SQLite.SQLiteDatabase): Payment {
-  writePaymentRow(payment, db);
-  appendAuditEvent({ entityType: 'payment', entityId: payment.id, action: 'create', before: null, after: { ...payment } }, db);
-  persistPendingChange(createPendingChange('payment', payment.id, 'create', { payment }), db);
+export async function insertPaymentRecords(payment: Payment, transactionDb: SQLite.SQLiteDatabase): Promise<Payment> {
+  await writePaymentRow(payment, transactionDb);
+  await appendAuditEvent({ entityType: 'payment', entityId: payment.id, action: 'create', before: null, after: { ...payment } }, transactionDb);
+  await persistPendingChange(createPendingChange('payment', payment.id, 'create', { payment }), transactionDb);
   return payment;
 }
 
-/** Voids a payment with its audit event and operation-log entry. Call inside a transaction. */
-export function voidPaymentRecords(before: Payment, db: SQLite.SQLiteDatabase, voidedAt = new Date().toISOString()): Payment {
+export async function voidPaymentRecords(
+  before: Payment,
+  transactionDb: SQLite.SQLiteDatabase,
+  voidedAt = new Date().toISOString(),
+): Promise<Payment> {
   const after = { ...before, voidedAt, updatedAt: voidedAt };
-  writePaymentRow(after, db);
-  appendAuditEvent({ entityType: 'payment', entityId: before.id, action: 'void', before: { ...before }, after: { ...after } }, db);
-  persistPendingChange(createPendingChange('payment', before.id, 'soft_delete', { before, after }), db);
+  await writePaymentRow(after, transactionDb);
+  await appendAuditEvent({ entityType: 'payment', entityId: before.id, action: 'void', before: { ...before }, after: { ...after } }, transactionDb);
+  await persistPendingChange(createPendingChange('payment', before.id, 'soft_delete', { before, after }), transactionDb);
   return after;
 }
 
-export function listActiveSalePayments(ticketId: string, db: SQLite.SQLiteDatabase): Payment[] {
-  return db
-    .getAllSync<PaymentRow>(
-      `SELECT * FROM payments WHERE ticket_id = ? AND payment_kind = 'AT_SALE' AND voided_at IS NULL;`,
-      ticketId,
-    )
-    .map(mapPayment);
+export async function listActiveSalePayments(ticketId: string, transactionDb: SQLite.SQLiteDatabase): Promise<Payment[]> {
+  const rows = await transactionDb.getAllAsync<PaymentRow>(
+    `SELECT * FROM payments WHERE ticket_id = ? AND payment_kind = 'AT_SALE' AND voided_at IS NULL;`,
+    ticketId,
+  );
+  return rows.map(mapPayment);
 }

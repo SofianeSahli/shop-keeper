@@ -1,29 +1,30 @@
-import { ReactNode } from 'react';
-import { Text, TextInput, TextInputProps, View } from 'react-native';
+import { ReactNode, Ref } from 'react';
+import { Text, TextInput, TextInputInstance, TextInputProps, View } from 'react-native';
+import { FieldErrorText } from '@/components/ui';
 
 interface LedgerFieldProps extends Omit<TextInputProps, 'onChangeText' | 'value'> {
   label: string;
   value: string;
   error?: string;
   hint?: string;
-  /** Short text after the value, e.g. the currency. */
   suffix?: string;
-  /** Element beside the input, e.g. a re-scan button. */
   accessory?: ReactNode;
   onChangeText: (value: string) => void;
+  ref?: Ref<TextInputInstance>;
 }
 
-export function LedgerField({ label, value, error, hint, suffix, accessory, onChangeText, ...inputProps }: LedgerFieldProps) {
+export function LedgerField({ label, value, error, hint, suffix, accessory, onChangeText, ref, ...inputProps }: LedgerFieldProps) {
   return (
     <View className="gap-1.5">
       <Text className="type-label">{label}</Text>
       <View className="flex-row items-center gap-2">
         <View
           className={`min-h-[50px] flex-1 flex-row items-center rounded-control border bg-surface px-4 ${
-            error ? 'border-[1.5px] border-debt' : 'border-line-strong'
+            error ? 'ui-input-error' : 'border-line-strong'
           }`}
         >
           <TextInput
+            ref={ref}
             accessibilityLabel={label}
             accessibilityHint={error ?? hint}
             placeholderClassName="text-ink-2"
@@ -36,13 +37,7 @@ export function LedgerField({ label, value, error, hint, suffix, accessory, onCh
         </View>
         {accessory}
       </View>
-      {error ? (
-        <Text accessibilityLiveRegion="polite" className="font-plex text-label text-debt">
-          {error}
-        </Text>
-      ) : hint ? (
-        <Text className="type-caption">{hint}</Text>
-      ) : null}
+      {error ? <FieldErrorText message={error} /> : hint ? <Text className="type-caption">{hint}</Text> : null}
     </View>
   );
 }

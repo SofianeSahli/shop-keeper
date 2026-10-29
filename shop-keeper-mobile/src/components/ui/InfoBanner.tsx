@@ -7,7 +7,7 @@ const TONES: Record<BannerTone, { container: string; text: string; icon: IconNam
   warning: { container: 'bg-partial-soft border-partial-line', text: 'text-warn-strong', icon: 'warning', button: 'bg-warn-strong' },
   success: { container: 'bg-paid-soft border-paid-soft', text: 'text-paid', icon: 'checkmark-circle', button: 'bg-paid' },
   info: { container: 'bg-primary-faint border-primary-soft', text: 'text-primary', icon: 'information-circle', button: 'bg-primary' },
-  error: { container: 'bg-debt-soft border-debt-line', text: 'text-debt-strong', icon: 'alert-circle', button: 'bg-debt' },
+  error: { container: 'bg-error-soft border-error-line', text: 'text-error-strong', icon: 'alert-circle', button: 'bg-error' },
 };
 
 interface InfoBannerProps {

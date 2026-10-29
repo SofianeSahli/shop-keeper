@@ -34,40 +34,39 @@ export function updateCustomerRecord(existing: Customer, input: CustomerInput): 
   };
 }
 
-/** Customers the owner manages; the built-in walk-in customer is left out unless asked for. */
 export function listCustomers(
   search = '',
   includeInactive = false,
   repository: LedgerRepository = ledgerRepository,
   { includeWalkIn = false }: { includeWalkIn?: boolean } = {},
-): Customer[] {
+): Promise<Customer[]> {
   return repository.listCustomers(search, includeInactive, includeWalkIn);
 }
 
-export function getCustomer(id: string, repository: LedgerRepository = ledgerRepository): Customer | null {
+export function getCustomer(id: string, repository: LedgerRepository = ledgerRepository): Promise<Customer | null> {
   return repository.getCustomer(id);
 }
 
-export function createCustomer(
+export async function createCustomer(
   input: CustomerInput,
   repository: LedgerRepository = ledgerRepository,
-): Customer {
+): Promise<Customer> {
   const customer = createCustomerRecord(input);
-  return repository.transaction((db) => {
-    repository.saveCustomer(customer);
-    persistPendingChange(createPendingChange('customer', customer.id, 'create', { customer }), db);
+  return repository.transaction(async (db, customers) => {
+    await customers.saveCustomer(customer);
+    await persistPendingChange(createPendingChange('customer', customer.id, 'create', { customer }), db);
     return customer;
   });
 }
 
-export function updateCustomer(
+export async function updateCustomer(
   id: string,
   input: CustomerInput,
   repository: LedgerRepository = ledgerRepository,
-): Customer {
+): Promise<Customer> {
   if (isWalkInCustomer(id)) throw new Error(WALK_IN_LOCKED);
-  return repository.transaction((db) => {
-    const existing = repository.getCustomer(id);
+  return repository.transaction(async (db, customers) => {
+    const existing = await customers.getCustomer(id);
     if (!existing) {
       throw new Error('Customer not found.');
     }
@@ -75,19 +74,19 @@ export function updateCustomer(
       throw new Error('Inactive customers cannot be edited.');
     }
     const customer = updateCustomerRecord(existing, input);
-    repository.saveCustomer(customer);
-    persistPendingChange(createPendingChange('customer', customer.id, 'update', { customer }), db);
+    await customers.saveCustomer(customer);
+    await persistPendingChange(createPendingChange('customer', customer.id, 'update', { customer }), db);
     return customer;
   });
 }
 
-export function removeCustomer(
+export async function removeCustomer(
   id: string,
   repository: LedgerRepository = ledgerRepository,
-): Customer {
+): Promise<Customer> {
   if (isWalkInCustomer(id)) throw new Error(WALK_IN_LOCKED);
-  return repository.transaction((db) => {
-    const customer = repository.getCustomer(id);
+  return repository.transaction(async (db, customers) => {
+    const customer = await customers.getCustomer(id);
     if (!customer) {
       throw new Error('Customer not found.');
     }
@@ -95,8 +94,8 @@ export function removeCustomer(
       throw new Error('Customer is already inactive.');
     }
     const removed = { ...customer, isActive: false, updatedAt: new Date().toISOString() };
-    repository.saveCustomer(removed);
-    persistPendingChange(
+    await customers.saveCustomer(removed);
+    await persistPendingChange(
       createPendingChange('customer', id, 'soft_delete', { before: customer, after: removed }),
       db,
     );

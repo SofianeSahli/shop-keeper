@@ -1,10 +1,7 @@
-import { useCallback, useState } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
-import { getLedgerErrorMessage } from '@/i18n/errorMessages';
+import { useLedgerQuery } from '@/features/feedback/useLedgerQuery';
 import { formatMessage } from '@/i18n/format';
 import { formatLongDay, formatShortDate } from '@/lib/money';
 import {
@@ -15,52 +12,49 @@ import {
   Icon,
   InfoBanner,
   ListRow,
+  RefreshingPill,
   ScreenScroll,
+  SkeletonRows,
   StatCard,
 } from '@/components/ui';
-import { DashboardSummary, getDashboardSummary } from '../services/dashboardService';
-import { DebtorSummary } from '../services/customerBalanceService';
+import { getDashboardSummary } from '../services/dashboardService';
 import { listTopDebtors } from '../services/ledgerReadService';
 
-interface HomeData {
-  summary: DashboardSummary | null;
-  topDebtors: DebtorSummary[];
-  error: string;
+const TOP_DEBTOR_COUNT = 3;
+
+async function loadHome() {
+  const summary = await getDashboardSummary();
+  const topDebtors = await listTopDebtors(TOP_DEBTOR_COUNT);
+  return { summary, topDebtors };
 }
 
 const OWES_FILTER = { pathname: '/ledger/customers', params: { filter: 'owes' } } as const;
 
 export function HomeScreen() {
   const { t, language } = useLedgerTranslations();
-  const refreshVersion = useSelector((state: RootState) => state.ledger.refreshVersion);
-  const [data, setData] = useState<HomeData>({ summary: null, topDebtors: [], error: '' });
-
-  const load = useCallback(() => {
-    try {
-      setData({ summary: getDashboardSummary(), topDebtors: listTopDebtors(3), error: '' });
-    } catch (cause) {
-      setData({ summary: null, topDebtors: [], error: getLedgerErrorMessage(cause, t, t.loadFailed) });
-    }
-    // refreshVersion re-runs the load after any saved change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t, refreshVersion]);
-
-  useFocusEffect(load);
-
-  const { summary, topDebtors, error } = data;
+  const home = useLedgerQuery(loadHome);
+  const summary = home.data?.summary;
+  const topDebtors = home.data?.topDebtors ?? [];
+  const isLoading = home.status === 'loading';
 
   return (
     <ScreenScroll>
       <View className="flex-row flex-wrap items-center justify-between gap-2">
         <Text className="type-label capitalize">{formatLongDay(new Date(), language)}</Text>
-        <View className="ui-pill bg-paid-soft">
-          <Icon name="phone-portrait-outline" size={14} className="text-paid" />
-          <Text className="font-plex-semibold text-caption text-paid">{t.savedOnPhone}</Text>
+        <View className="flex-row items-center gap-2">
+          <RefreshingPill visible={home.status === 'refreshing'} />
+          <View className="ui-pill bg-paid-soft">
+            <Icon name="phone-portrait-outline" size={14} className="text-paid" />
+            <Text className="font-plex-semibold text-caption text-paid">{t.savedOnPhone}</Text>
+          </View>
         </View>
       </View>
 
-      {error ? <InfoBanner tone="error" title={error} actionLabel={t.retry} onAction={load} /> : null}
+      {home.status === 'error' ? (
+        <InfoBanner tone="error" title={home.error} actionLabel={t.retry} onAction={home.retry} />
+      ) : null}
 
+      {isLoading ? <SkeletonRows variant="stat" count={2} /> : null}
       {summary ? (
         <View className="flex-row gap-3">
           <StatCard
@@ -102,6 +96,7 @@ export function HomeScreen() {
         />
       </View>
 
+      {isLoading ? <SkeletonRows count={TOP_DEBTOR_COUNT} /> : null}
       {summary ? (
         <View className="ui-card-flush">
           <View className="flex-row items-center justify-between ps-4 pe-2 pt-2">

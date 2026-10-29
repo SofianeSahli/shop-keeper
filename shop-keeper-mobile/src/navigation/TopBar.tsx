@@ -6,12 +6,14 @@ import { getActiveFeature, getActiveItem, isNestedRoute } from './features';
 import { useAppNavigation } from './useAppNavigation';
 import { LanguageMenu } from './LanguageMenu';
 import { useTopBarState } from './TopBarContext';
+import { useDevTools } from './useDevTools';
 
 export function TopBar() {
   const pathname = usePathname();
   const { t } = useLedgerTranslations();
   const { goBack, pushTo } = useAppNavigation();
   const options = useTopBarState();
+  const devTools = useDevTools();
 
   const feature = getActiveFeature(pathname);
   if (!feature) return null;
@@ -38,13 +40,14 @@ export function TopBar() {
             accessibilityLabel={t.home}
             className="ui-icon-button"
             onPress={() => activeItem.id !== 'home' && pushTo('/')}
+            onLongPress={devTools?.seedLedger}
           >
             <View className="h-[34px] w-[34px] items-center justify-center rounded-control bg-primary">
               <Text className="font-plex-bold text-heading text-surface">{t.appMark}</Text>
             </View>
           </Pressable>
         )}
-        <Text accessibilityRole="header" numberOfLines={1} className="type-title flex-1">
+        <Text accessibilityRole="header" numberOfLines={1} className="type-title flex-1" onLongPress={devTools?.runDemoTask}>
           {title}
         </Text>
         {options.action ? (

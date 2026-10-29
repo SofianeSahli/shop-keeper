@@ -1,13 +1,24 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { router } from 'expo-router';
 import { View } from 'react-native';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
-import { getLedgerErrorMessage } from '@/i18n/errorMessages';
+import { useLedgerQuery } from '@/features/feedback/useLedgerQuery';
 import { formatMessage } from '@/i18n/format';
 import { locales } from '@/lib/money';
-import { AmountText, Avatar, DayHeader, EmptyState, Fab, FilterChips, InfoBanner, ListRow, ScreenScroll, StatusChip } from '@/components/ui';
+import {
+  AmountText,
+  Avatar,
+  DayHeader,
+  EmptyState,
+  Fab,
+  FilterChips,
+  InfoBanner,
+  ListRow,
+  RefreshingPill,
+  ScreenScroll,
+  SkeletonRows,
+  StatusChip,
+} from '@/components/ui';
 import { groupByLocalDay } from '@/components/ui/logic/dayGroups';
 import { getCustomerLabel } from '../components/customers/customerLabel';
 import { sumActivePaymentsByTicket } from '../services/customerBalanceService';
@@ -15,41 +26,29 @@ import { listCustomers } from '../services/customerService';
 import { paymentRepository } from '../services/paymentRepository';
 import { ticketRepository } from '../services/ticketRepository';
 import { filterTicketsByStatus, TicketFilter } from '../services/ticketService';
-import { Customer } from '../types/customer';
-import { Ticket } from '../types/ticket';
+
+async function loadTicketList() {
+  const tickets = await ticketRepository.listTickets();
+  const customers = await listCustomers('', true);
+  const payments = await paymentRepository.listPayments();
+  return { tickets, customers, paidByTicket: sumActivePaymentsByTicket(payments) };
+}
 
 export function TicketListScreen() {
   const { t, language } = useLedgerTranslations();
-  const refreshVersion = useSelector((state: RootState) => state.ledger.refreshVersion);
   const [filter, setFilter] = useState<TicketFilter>('ALL');
+  const query = useLedgerQuery(loadTicketList);
+  const tickets = query.data?.tickets ?? [];
+  const customers = query.data?.customers ?? [];
+  const paidByTicket = query.data?.paidByTicket;
 
-  const result = useMemo(() => {
-    try {
-      return {
-        tickets: ticketRepository.listTickets(),
-        customers: listCustomers('', true),
-        paidByTicket: sumActivePaymentsByTicket(paymentRepository.listPayments()),
-        error: '',
-        version: refreshVersion,
-      };
-    } catch (cause) {
-      return {
-        tickets: [] as Ticket[],
-        customers: [] as Customer[],
-        paidByTicket: new Map<string, number>(),
-        error: getLedgerErrorMessage(cause, t, t.loadFailed),
-        version: refreshVersion,
-      };
-    }
-  }, [refreshVersion, t]);
-
-  const visible = filterTicketsByStatus(result.tickets, filter);
+  const visible = filterTicketsByStatus(tickets, filter);
   const groups = groupByLocalDay(visible, (ticket) => ticket.createdAt);
   const time = new Intl.DateTimeFormat(locales[language], { hour: '2-digit', minute: '2-digit' });
 
   return (
     <View className="flex-1">
-      <ScreenScroll key={result.version}>
+      <ScreenScroll>
         <FilterChips
           options={[
             { value: 'ALL', label: t.filterAll },
@@ -61,12 +60,18 @@ export function TicketListScreen() {
           onChange={setFilter}
           accessibilityLabel={t.tickets}
         />
-        {result.error ? <InfoBanner tone="error" title={result.error} /> : null}
-        {visible.length === 0 && !result.error ? (
+        <View className="items-end">
+          <RefreshingPill visible={query.status === 'refreshing'} />
+        </View>
+        {query.status === 'error' ? (
+          <InfoBanner tone="error" title={query.error} actionLabel={t.retry} onAction={query.retry} />
+        ) : null}
+        {query.status === 'loading' ? <SkeletonRows count={5} /> : null}
+        {visible.length === 0 && query.status === 'ready' ? (
           <EmptyState
             icon="receipt-outline"
-            message={result.tickets.length === 0 ? t.noTickets : t.noTicketsForFilter}
-            actionLabel={result.tickets.length === 0 ? t.newTicket : undefined}
+            message={tickets.length === 0 ? t.noTickets : t.noTicketsForFilter}
+            actionLabel={tickets.length === 0 ? t.newTicket : undefined}
             onAction={() => router.push('/ledger/ticket-form')}
           />
         ) : null}
@@ -75,8 +80,8 @@ export function TicketListScreen() {
             <DayHeader dayKey={group.dayKey} />
             <View className="ui-card-flush">
               {group.items.map((ticket, index) => {
-                const label = getCustomerLabel(ticket.customerId, result.customers, t);
-                const remaining = Math.max(ticket.totalMillimes - (result.paidByTicket.get(ticket.id) ?? 0), 0);
+                const label = getCustomerLabel(ticket.customerId, customers, t);
+                const remaining = Math.max(ticket.totalMillimes - (paidByTicket?.get(ticket.id) ?? 0), 0);
                 return (
                   <ListRow
                     key={ticket.id}

@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { cssInterop } from 'nativewind';
-import { TextInput } from 'react-native';
+import { ActivityIndicator, TextInput } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-// Lets token classes drive color props that are not styles (constitution: no hex values in .tsx).
 cssInterop(Ionicons, {
   className: { target: 'style', nativeStyleToProp: { color: true } },
 });
@@ -11,3 +11,9 @@ cssInterop(TextInput, {
   className: { target: 'style', nativeStyleToProp: { textAlign: true } },
   placeholderClassName: { target: false, nativeStyleToProp: { color: 'placeholderTextColor' } },
 });
+
+cssInterop(ActivityIndicator, {
+  className: { target: 'style', nativeStyleToProp: { color: true } },
+});
+
+cssInterop(GestureHandlerRootView, { className: 'style' });

@@ -18,14 +18,16 @@ Services run synchronously and freeze the UI while they execute. Services will b
 | Void a ticket, remove a product or customer | Busy button; blocking loader if > 300 ms | Success toast |
 | Open a list, the dashboard, a customer ledger | Skeleton rows; previous values kept during refresh | Content appears (no toast) |
 | Long background work (later: backup, sync) | Pending toast, screen stays usable | Same toast turns into success or error |
-| Any failure | — | Error toast that stays, with "Réessayer"; form keeps its values |
+| Missing or invalid field on Save | Nothing starts (no busy button, no loader) | No toast: first field in error focused and scrolled into view, red outline (`error` token), message under the field |
+| Any other failure | — | Error toast that stays, with "Réessayer"; form keeps its values |
 
 Rules:
 - **One toast service for the whole app**, rendered once at the root. One toast at a time, others queued. A pending toast turns into success/error in place.
-- Toast position: top, under the top bar (never hidden by keyboard, sticky form footer or tab bar). Swipe up to dismiss.
+- Toast position: top, under the top bar (never hidden by keyboard, sticky form footer or tab bar). Swipe right to dismiss.
 - Durations: success 3 s, info 4 s, error until "Réessayer" or ×.
 - Screen readers: toasts announced; errors assertively.
-- **One blocking loader for the whole app**: shown only after 300 ms, at least 500 ms on screen, names the action and its object, blocks touches and Android back, no cancel on writes. After 8 s: "Ça prend plus de temps que prévu" / "Ne fermez pas l'application." (amber spinner).
+- **One blocking loader for the whole app**: shown only after 300 ms, at least 500 ms on screen, names the action and its object, blocks touches and Android back, no cancel on writes. After 2 s: "Ça prend plus de temps que prévu" / "Ne fermez pas l'application." (amber spinner).
+- **Form validation is not feedback**: it never uses the toast or the loader. The form owns it (red outline, message under the field, focus on the first field in error); a service validation error is mapped back to its field.
 - Screens never implement their own loading logic: every service call goes through one shared async-action helper (e.g. `useAsyncAction`) that drives busy button + loader + toast + error mapping. Services never import UI.
 
 ## Visual spec

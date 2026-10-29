@@ -6,6 +6,7 @@ import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { saveLanguage } from '@/i18n/languageStorage';
 import { SupportedLanguage } from '@/i18n/types';
 import { languageChanged } from '@/features/ledger/store/ledgerSlice';
+import { showToast } from '@/features/feedback/toasts';
 
 const LANGUAGES = [
   { code: 'fr', shortKey: 'languageShortFr', nameKey: 'languageNameFr' },
@@ -21,8 +22,8 @@ export function LanguageMenu() {
 
   function choose(code: SupportedLanguage): void {
     setOpen(false);
-    saveLanguage(code);
     dispatch(languageChanged(code));
+    saveLanguage(code).catch(() => showToast(dispatch, { kind: 'error', title: t.operationFailed }));
   }
 
   return (

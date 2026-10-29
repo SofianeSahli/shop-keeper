@@ -1,33 +1,42 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { router } from 'expo-router';
 import { View } from 'react-native';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
-import { getLedgerErrorMessage } from '@/i18n/errorMessages';
-import { AmountText, EmptyState, Fab, Icon, InfoBanner, ListRow, ScreenScroll, SearchField, isolateLtr } from '@/components/ui';
+import { useLedgerQuery } from '@/features/feedback/useLedgerQuery';
+import {
+  AmountText,
+  EmptyState,
+  Fab,
+  Icon,
+  InfoBanner,
+  ListRow,
+  RefreshingPill,
+  ScreenScroll,
+  SearchField,
+  SkeletonRows,
+  isolateLtr,
+} from '@/components/ui';
 import { listProducts } from '../services/productService';
-import { Product } from '../types/product';
 
-/** Product catalog (spec US7): search, rows that open the product form, no destructive action in rows. */
 export function ProductCatalogScreen() {
   const { t } = useLedgerTranslations();
-  const refreshVersion = useSelector((state: RootState) => state.ledger.refreshVersion);
   const [search, setSearch] = useState('');
-  const result = useMemo(() => {
-    try {
-      return { products: listProducts(search), error: '', version: refreshVersion };
-    } catch (cause) {
-      return { products: [] as Product[], error: getLedgerErrorMessage(cause, t, t.loadFailed), version: refreshVersion };
-    }
-  }, [refreshVersion, search, t]);
+  const loadProducts = useCallback(() => listProducts(search), [search]);
+  const query = useLedgerQuery(loadProducts, [search]);
+  const products = query.data ?? [];
 
   return (
     <View className="flex-1">
       <ScreenScroll>
         <SearchField value={search} onChangeText={setSearch} placeholder={t.productSearchPlaceholder} />
-        {result.error ? <InfoBanner tone="error" title={result.error} /> : null}
-        {result.products.length === 0 && !result.error ? (
+        <View className="items-end">
+          <RefreshingPill visible={query.status === 'refreshing'} />
+        </View>
+        {query.status === 'error' ? (
+          <InfoBanner tone="error" title={query.error} actionLabel={t.retry} onAction={query.retry} />
+        ) : null}
+        {query.status === 'loading' ? <SkeletonRows variant="tile" count={5} /> : null}
+        {products.length === 0 && query.status === 'ready' ? (
           <EmptyState
             icon="cube-outline"
             message={search.trim() ? t.emptyProducts : t.noActiveProducts}
@@ -35,9 +44,9 @@ export function ProductCatalogScreen() {
             onAction={() => router.push('/ledger/product-form')}
           />
         ) : null}
-        {result.products.length > 0 ? (
+        {products.length > 0 ? (
           <View className="ui-card-flush">
-            {result.products.map((product, index) => (
+            {products.map((product, index) => (
               <ListRow
                 key={product.id}
                 separated={index > 0}

@@ -1,5 +1,5 @@
 import type * as SQLite from 'expo-sqlite';
-import { getLedgerDatabase } from '@/db';
+import { getLedgerDatabase, accessLedger } from '@/db';
 import { createId } from '@/lib/id';
 
 export type AuditableEntityType = 'ticket' | 'payment';
@@ -25,17 +25,16 @@ interface AuditRow {
   created_at: string;
 }
 
-
-export function appendAuditEvent(
+export async function appendAuditEvent(
   event: Omit<LedgerAuditEvent, 'id' | 'createdAt'>,
   db: SQLite.SQLiteDatabase = getLedgerDatabase(),
-): LedgerAuditEvent {
+): Promise<LedgerAuditEvent> {
   const saved: LedgerAuditEvent = {
     ...event,
     id: createId(),
     createdAt: new Date().toISOString(),
   };
-  db.runSync(
+  await db.runAsync(
     `INSERT INTO ledger_audit_events
        (id, entity_type, entity_id, action, before_json, after_json, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?);`,
@@ -50,11 +49,11 @@ export function appendAuditEvent(
   return saved;
 }
 
-export function listAuditEvents(
+export async function listAuditEvents(
   entityType?: AuditableEntityType,
   entityId?: string,
-): LedgerAuditEvent[] {
-  const rows = getLedgerDatabase().getAllSync<AuditRow>(
+): Promise<LedgerAuditEvent[]> {
+  const rows = await accessLedger((db) => db.getAllAsync<AuditRow>(
     `SELECT * FROM ledger_audit_events
      WHERE (? IS NULL OR entity_type = ?)
        AND (? IS NULL OR entity_id = ?)
@@ -63,7 +62,7 @@ export function listAuditEvents(
     entityType ?? null,
     entityId ?? null,
     entityId ?? null,
-  );
+  ));
   return rows.map((row) => ({
     id: row.id,
     entityType: row.entity_type,

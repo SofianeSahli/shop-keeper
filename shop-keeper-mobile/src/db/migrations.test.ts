@@ -7,9 +7,9 @@ import { ensureWalkInCustomer, migrateLedgerDatabase } from './migrations';
 vi.mock('@/lib/id', () => ({ createId: () => randomUUID() }));
 
 describe('ensureWalkInCustomer', () => {
-  it('seeds the walk-in customer once and logs it for sync', () => {
+  it('seeds the walk-in customer once and logs it for sync', async () => {
     const db = createTestLedgerDb();
-    ensureWalkInCustomer(db);
+    await ensureWalkInCustomer(db);
 
     expect(
       db.getFirstSync('SELECT id, internal_code, is_active FROM customers WHERE id = ?;', WALK_IN_CUSTOMER_ID),
@@ -17,10 +17,10 @@ describe('ensureWalkInCustomer', () => {
     expect(countRows(db, 'pending_changes', "entity_type = 'customer' AND operation = 'create' AND status = 'pending'")).toBe(1);
   });
 
-  it('does nothing the second time', () => {
+  it('does nothing the second time', async () => {
     const db = createTestLedgerDb();
-    ensureWalkInCustomer(db);
-    ensureWalkInCustomer(db);
+    await ensureWalkInCustomer(db);
+    await ensureWalkInCustomer(db);
     expect(countRows(db, 'customers')).toBe(1);
     expect(countRows(db, 'pending_changes')).toBe(1);
   });

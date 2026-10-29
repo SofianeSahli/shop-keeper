@@ -1,11 +1,10 @@
-import { useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Ref, useMemo, useState } from 'react';
+import { HostInstance, Pressable, Text, View } from 'react-native';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
-import { getLedgerErrorMessage } from '@/i18n/errorMessages';
+import { useLedgerQuery } from '@/features/feedback/useLedgerQuery';
 import { formatMessage } from '@/i18n/format';
 import { formatMillimeAmount } from '@/lib/money';
-import { AmountText, Avatar, BottomSheet, EmptyState, Icon, InfoBanner, ListRow, SearchField } from '@/components/ui';
-import { DebtorSummary } from '../../services/customerBalanceService';
+import { AmountText, Avatar, BottomSheet, EmptyState, FieldErrorText, Icon, InfoBanner, ListRow, SearchField, SkeletonRows } from '@/components/ui';
 import { listDebtorSummaries } from '../../services/ledgerReadService';
 import { Customer } from '../../types/customer';
 import { CustomerForm } from './CustomerForm';
@@ -13,39 +12,29 @@ import { CustomerForm } from './CustomerForm';
 interface CustomerPickerCardProps {
   value: string;
   onChange: (customerId: string) => void;
-  /** Validation message; draws the card in the debt color. */
   error?: string;
-  /** Shows "Walk-in customer" when nothing is chosen (sale paid in full, spec US8). */
   walkInAllowed?: boolean;
+  ref?: Ref<HostInstance>;
 }
 
-function loadSummaries(): { summaries: DebtorSummary[]; error: string | null } {
-  try {
-    return { summaries: listDebtorSummaries(), error: null };
-  } catch (cause) {
-    return { summaries: [], error: cause instanceof Error ? cause.message : String(cause) };
-  }
-}
-
-/** Pinned customer card with current debt, picker sheet and inline creation (spec US3). */
-export function CustomerPickerCard({ value, onChange, error, walkInAllowed = false }: CustomerPickerCardProps) {
+export function CustomerPickerCard({ value, onChange, error, walkInAllowed = false, ref }: CustomerPickerCardProps) {
   const { t, language } = useLedgerTranslations();
-  const [state, setState] = useState(loadSummaries);
+  const debtors = useLedgerQuery(listDebtorSummaries);
+  const summaries = useMemo(() => debtors.data ?? [], [debtors.data]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const selected = state.summaries.find((summary) => summary.customerId === value);
-  const loadError = state.error ? getLedgerErrorMessage(new Error(state.error), t, t.loadFailed) : '';
+  const selected = summaries.find((summary) => summary.customerId === value);
 
   const filtered = useMemo(() => {
     const search = query.trim().toLocaleLowerCase();
-    if (!search) return state.summaries;
-    return state.summaries.filter(
+    if (!search) return summaries;
+    return summaries.filter(
       (summary) =>
         summary.displayLabel.toLocaleLowerCase().includes(search) ||
         (summary.phoneNumber ?? '').includes(search),
     );
-  }, [query, state.summaries]);
+  }, [query, summaries]);
 
   function closePicker(): void {
     setPickerOpen(false);
@@ -58,12 +47,11 @@ export function CustomerPickerCard({ value, onChange, error, walkInAllowed = fal
   }
 
   function openCreate(): void {
-    closePicker(); // nested modals are unreliable on iOS: close the picker first
+    closePicker();
     setCreateOpen(true);
   }
 
   function handleCreated(customer: Customer): void {
-    setState(loadSummaries());
     onChange(customer.id);
     setCreateOpen(false);
   }
@@ -80,9 +68,10 @@ export function CustomerPickerCard({ value, onChange, error, walkInAllowed = fal
       <Text className="type-label">{t.customer}</Text>
       <View className="flex-row gap-2">
         <Pressable
+          ref={ref}
           accessibilityRole="button"
           accessibilityLabel={cardLabel}
-          accessibilityHint={t.changeCustomer}
+          accessibilityHint={error ?? t.changeCustomer}
           className={`min-h-[64px] flex-1 flex-row items-center gap-3 rounded-control-lg border bg-surface px-3 ${border}`}
           onPress={() => setPickerOpen(true)}
         >
@@ -127,16 +116,15 @@ export function CustomerPickerCard({ value, onChange, error, walkInAllowed = fal
           </Text>
         </Pressable>
       </View>
-      {error ? (
-        <Text accessibilityLiveRegion="polite" className="font-plex-semibold text-label text-debt">
-          {error}
-        </Text>
-      ) : null}
+      <FieldErrorText message={error} />
 
       <BottomSheet visible={pickerOpen} title={t.chooseCustomer} onClose={closePicker}>
         <SearchField value={query} onChangeText={setQuery} placeholder={t.customerSearchPlaceholder} />
-        {loadError ? <InfoBanner tone="error" title={loadError} /> : null}
-        {filtered.length === 0 ? (
+        {debtors.status === 'error' ? (
+          <InfoBanner tone="error" title={debtors.error} actionLabel={t.retry} onAction={debtors.retry} />
+        ) : null}
+        {debtors.status === 'loading' ? <SkeletonRows count={4} /> : null}
+        {debtors.status === 'loading' ? null : filtered.length === 0 ? (
           <EmptyState icon="people-outline" message={t.emptyCustomers} actionLabel={t.newCustomer} onAction={openCreate} />
         ) : (
           <View className="ui-card-flush">

@@ -3,22 +3,20 @@ import { buildCustomerLedgerEntries, CustomerLedgerEntry, DebtorSummary, summari
 import { paymentRepository } from './paymentRepository';
 import { ticketRepository } from './ticketRepository';
 
-/** Repository-backed read helpers for screens; the calculations live in pure services. */
-export function listDebtorSummaries(): DebtorSummary[] {
-  return summariseDebtors(listCustomers(), ticketRepository.listTickets(), paymentRepository.listPayments());
+export async function listDebtorSummaries(): Promise<DebtorSummary[]> {
+  const customers = await listCustomers();
+  const tickets = await ticketRepository.listTickets();
+  const payments = await paymentRepository.listPayments();
+  return summariseDebtors(customers, tickets, payments);
 }
 
-/** Customers who owe money, highest balance first (Home "Who owes the most"). */
-export function listTopDebtors(limit = 3): DebtorSummary[] {
-  return listDebtorSummaries()
-    .filter((summary) => summary.balanceMillimes > 0)
-    .slice(0, limit);
+export async function listTopDebtors(limit = 3): Promise<DebtorSummary[]> {
+  const summaries = await listDebtorSummaries();
+  return summaries.filter((summary) => summary.balanceMillimes > 0).slice(0, limit);
 }
 
-export function getCustomerLedgerEntries(customerId: string): CustomerLedgerEntry[] {
-  return buildCustomerLedgerEntries(
-    customerId,
-    ticketRepository.listTickets(customerId),
-    paymentRepository.listPayments(customerId),
-  );
+export async function getCustomerLedgerEntries(customerId: string): Promise<CustomerLedgerEntry[]> {
+  const tickets = await ticketRepository.listTickets(customerId);
+  const payments = await paymentRepository.listPayments(customerId);
+  return buildCustomerLedgerEntries(customerId, tickets, payments);
 }

@@ -1,40 +1,125 @@
-import { useEffect, useState } from 'react';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
-import { useDispatch } from 'react-redux';
-import { useLedgerTranslations } from '@/i18n/useTranslations';
-import { getLedgerErrorMessage } from '@/i18n/errorMessages';
-import { formatMessage } from '@/i18n/format';
-import { AmountText, BottomSheet, Icon, InfoBanner, ScreenScroll, SegmentedControl, StatusChip, isolateLtr } from '@/components/ui';
-import type { SegmentOption } from '@/components/ui';
-import { formatMillimeAmount } from '@/lib/money';
-import { createId } from '@/lib/id';
-import { useTopBarOptions } from '@/navigation/TopBarContext';
-import { clearFormDirty, refreshCompleted, setFormDirty } from '../store/ledgerSlice';
-import { createProduct, findProductByBarcode, listProducts } from '../services/productService';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { Pressable, ScrollViewInstance, Text, View } from "react-native";
+import { useDispatch } from "react-redux";
+import { useLedgerTranslations } from "@/i18n/useTranslations";
+import { getLedgerErrorMessage } from "@/i18n/errorMessages";
+import { formatMessage } from "@/i18n/format";
+import { useAsyncAction } from "@/features/feedback/useAsyncAction";
+import { useLedgerQuery } from "@/features/feedback/useLedgerQuery";
+import {
+  AmountText,
+  BottomSheet,
+  BusyButton,
+  FieldErrorText,
+  Icon,
+  InfoBanner,
+  ScreenScroll,
+  SegmentedControl,
+  SkeletonRows,
+  StatusChip,
+  isolateLtr,
+  useFieldErrors,
+} from "@/components/ui";
+import type { SegmentOption } from "@/components/ui";
+import { formatMillimeAmount } from "@/lib/money";
+import { createId } from "@/lib/id";
+import { useTopBarOptions } from "@/navigation/TopBarContext";
+import {
+  clearFormDirty,
+  refreshCompleted,
+  setFormDirty,
+} from "../store/ledgerSlice";
+import {
+  createProduct,
+  findProductByBarcode,
+  listProducts,
+} from "../services/productService";
 import {
   addTicketDraftItem,
   calculateTicketTotal,
   updateTicketDraftItemQuantity,
-} from '../services/ticketDraftService';
-import { buildTicketFromDraft, updateTicketFromDraft } from '../services/ticketService';
-import { getSaleSaveLabel, getSalePaymentAmount, recordSale, validateSaleChoice } from '../services/saleService';
-import { isWalkInCustomer, WALK_IN_CUSTOMER_ID } from '../constants';
-import { SalePaymentChoice, SalePaymentKind } from '../types/sale';
-import { ticketRepository } from '../services/ticketRepository';
-import { Product } from '../types/product';
-import { Ticket, TicketDraftItem } from '../types/ticket';
-import { BarcodeScanner } from '../components/ticket/BarcodeScanner';
-import { ProductSearchSheet } from '../components/ticket/ProductSearchSheet';
-import { TicketLineRow } from '../components/ticket/TicketLineRow';
-import { CustomerPickerCard } from '../components/customers/CustomerPickerCard';
-import { LedgerField } from '../components/forms/LedgerField';
-import { MillimeInput, parseMillimes } from '../components/forms/MillimeInput';
-import { useDirtyFormGuard } from '../hooks/useDirtyFormGuard';
+} from "../services/ticketDraftService";
+import {
+  buildTicketFromDraft,
+  updateTicketFromDraft,
+} from "../services/ticketService";
+import {
+  getSaleSaveLabel,
+  getSalePaymentAmount,
+  recordSale,
+  validateSaleChoice,
+} from "../services/saleService";
+import { isWalkInCustomer, WALK_IN_CUSTOMER_ID } from "../constants";
+import { SalePaymentChoice, SalePaymentKind } from "../types/sale";
+import { ticketRepository } from "../services/ticketRepository";
+import { Product } from "../types/product";
+import { Ticket, TicketDraftItem } from "../types/ticket";
+import { BarcodeScanner } from "../components/ticket/BarcodeScanner";
+import { ProductSearchSheet } from "../components/ticket/ProductSearchSheet";
+import { TicketLineRow } from "../components/ticket/TicketLineRow";
+import { CustomerPickerCard } from "../components/customers/CustomerPickerCard";
+import { LedgerField } from "../components/forms/LedgerField";
+import {
+  isValidMillimeText,
+  MillimeInput,
+  parseMillimes,
+} from "../components/forms/MillimeInput";
+import { ledgerFieldErrorFor } from "../components/forms/ledgerFieldError";
+import { useDirtyFormGuard } from "../hooks/useDirtyFormGuard";
+
+const TICKET_FIELDS = ["customer", "items", "partialAmount"] as const;
+const NEW_PRODUCT_FIELDS = ["name", "price"] as const;
+
+interface TicketFormData {
+  products: Product[];
+  ticket: Ticket | null;
+}
+
+async function loadTicketForm(id: string | undefined): Promise<TicketFormData> {
+  const products = await listProducts();
+  const ticket = id ? await ticketRepository.getTicket(id, false) : null;
+  return { products, ticket };
+}
 
 export function TicketFormScreen() {
-  const { id, customerId } = useLocalSearchParams<{ id?: string; customerId?: string }>();
-  return <TicketForm key={id ?? customerId ?? 'new'} id={id} initialCustomerId={customerId} />;
+  const { id, customerId } = useLocalSearchParams<{
+    id?: string;
+    customerId?: string;
+  }>();
+  const { t } = useLedgerTranslations();
+  useDirtyFormGuard();
+  useTopBarOptions({ title: id ? t.editTicket : t.newTicket });
+  const loadForm = useCallback(() => loadTicketForm(id), [id]);
+  const query = useLedgerQuery(loadForm, [id]);
+
+  if (query.status === "loading") {
+    return (
+      <ScreenScroll>
+        <SkeletonRows variant="tile" count={3} />
+      </ScreenScroll>
+    );
+  }
+  if (!query.data || (id && !query.data.ticket)) {
+    return (
+      <ScreenScroll>
+        <InfoBanner
+          tone="error"
+          title={query.status === "error" ? query.error : t.recordUnavailable}
+          actionLabel={query.status === "error" ? t.retry : undefined}
+          onAction={query.retry}
+        />
+      </ScreenScroll>
+    );
+  }
+  return (
+    <TicketForm
+      key={id ?? customerId ?? "new"}
+      id={id}
+      initialCustomerId={customerId}
+      initial={query.data}
+    />
+  );
 }
 
 function toDraftItems(ticket: Ticket | null): TicketDraftItem[] {
@@ -58,40 +143,48 @@ function parseAmountOrNull(value: string): number | null {
   }
 }
 
-function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?: string }) {
+interface TicketFormProps {
+  id?: string;
+  initialCustomerId?: string;
+  initial: TicketFormData;
+}
+
+function TicketForm({ id, initialCustomerId, initial }: TicketFormProps) {
   const { t, language } = useLedgerTranslations();
   const dispatch = useDispatch();
-  useDirtyFormGuard();
-  useTopBarOptions({ title: id ? t.editTicket : t.newTicket });
-  const [initial] = useState(() => {
-    try {
-      const products = listProducts();
-      const ticket = id ? ticketRepository.getTicket(id, false) : null;
-      return { products, ticket, error: id && !ticket ? t.loadFailed : '' };
-    } catch (cause) {
-      return {
-        products: [] as Product[],
-        ticket: null,
-        error: getLedgerErrorMessage(cause, t, t.loadFailed),
-      };
-    }
-  });
-  const initialCustomer = initial.ticket?.customerId ?? initialCustomerId ?? '';
+  const initialCustomer = initial.ticket?.customerId ?? initialCustomerId ?? "";
 
   const [products, setProducts] = useState<Product[]>(initial.products);
   const [customerId, setCustomerId] = useState(initialCustomer);
-  const [items, setItems] = useState<TicketDraftItem[]>(() => toDraftItems(initial.ticket));
+  const [items, setItems] = useState<TicketDraftItem[]>(() =>
+    toDraftItems(initial.ticket),
+  );
   const [searchOpen, setSearchOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [newProductName, setNewProductName] = useState('');
-  const [newProductPrice, setNewProductPrice] = useState('');
-  const [pendingBarcode, setPendingBarcode] = useState('');
-  const [error, setError] = useState(initial.error);
-  // Payment status chosen at sale (spec 003, US8): new tickets only, Paid by default.
+  const [newProductName, setNewProductName] = useState("");
+  const [newProductPrice, setNewProductPrice] = useState("");
+  const [pendingBarcode, setPendingBarcode] = useState("");
+  const [draftError, setDraftError] = useState("");
+  const [newProductError, setNewProductError] = useState("");
   const isNew = !id;
-  const [saleKind, setSaleKind] = useState<SalePaymentKind>('PAID');
-  const [partialAmount, setPartialAmount] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [saleKind, setSaleKind] = useState<SalePaymentKind>("PAID");
+  const [partialAmount, setPartialAmount] = useState("");
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const newProductFields = useFieldErrors({
+    fieldOrder: NEW_PRODUCT_FIELDS,
+    validate: () => ({
+      name: newProductName.trim() ? undefined : t.fieldRequired,
+      price: !newProductPrice.trim()
+        ? t.fieldRequired
+        : isValidMillimeText(newProductPrice)
+          ? undefined
+          : t.invalidAmount,
+    }),
+    fieldErrorFor: ledgerFieldErrorFor(
+      { requiredField: "name", invalidAmount: "price" },
+      t,
+    ),
+  });
 
   useEffect(() => {
     const original = initial.ticket?.lines ?? [];
@@ -108,8 +201,8 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
           item.productName !== line.productNameSnapshot
         );
       });
-    dispatch(setFormDirty({ section: 'tickets', isDirty: hasChanges && !initial.error }));
-  }, [customerId, dispatch, initial.error, initial.ticket, initialCustomer, items]);
+    dispatch(setFormDirty({ section: "tickets", isDirty: hasChanges }));
+  }, [customerId, dispatch, initial.ticket, initialCustomer, items]);
 
   useEffect(() => {
     return () => {
@@ -128,9 +221,9 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
         quantity: 1,
       };
       setItems((current) => addTicketDraftItem(current, item));
-      setError('');
+      setDraftError("");
     } catch (cause) {
-      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
+      setDraftError(getLedgerErrorMessage(cause, t, t.saveFailed));
     }
   }
 
@@ -138,9 +231,8 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
     const product = findProductByBarcode(products, value);
     if (product) {
       addProduct(product);
-      setPendingBarcode('');
+      setPendingBarcode("");
     } else {
-      // Unknown code: offer to create the product with this code, keeping the draft.
       setPendingBarcode(value.trim());
       setCreateOpen(true);
     }
@@ -148,89 +240,168 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
 
   function openCreateMissing(): void {
     setSearchOpen(false);
-    setPendingBarcode('');
+    setPendingBarcode("");
     setCreateOpen(true);
   }
 
   function closeCreate(): void {
     setCreateOpen(false);
-    setPendingBarcode('');
-    setNewProductName('');
-    setNewProductPrice('');
+    setPendingBarcode("");
+    setNewProductName("");
+    setNewProductPrice("");
+    setNewProductError("");
+    newProductFields.reset();
   }
 
-  function saveNewProduct(): void {
-    try {
-      const product = createProduct({
+  const createProductAction = useAsyncAction(() => ({
+    checkFields: newProductFields.checkFields,
+    showFieldError: newProductFields.showReportedError,
+    work: () =>
+      createProduct({
         name: newProductName.trim(),
         barcode: pendingBarcode || null,
         sellingPriceMillimes: parseMillimes(newProductPrice),
-      });
+      }),
+    loaderLabel: t.savingProduct,
+    loaderDetail: newProductName.trim() || null,
+    successToast: { title: t.productSavedToast, detail: newProductName.trim() },
+    onSuccess: (product: Product) => {
       setProducts((current) => [...current, product]);
       addProduct(product);
       dispatch(refreshCompleted());
       closeCreate();
-    } catch (cause) {
-      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
-    }
-  }
+    },
+    onFailure: (cause: unknown) =>
+      setNewProductError(getLedgerErrorMessage(cause, t, t.saveFailed)),
+    failureThing: t.thingProduct,
+    keepValuesMessage: t.valuesKept,
+  }));
 
   function changeQuantity(itemId: string, quantity: number): void {
     try {
-      setItems((current) => updateTicketDraftItemQuantity(current, itemId, quantity));
-      setError('');
+      setItems((current) =>
+        updateTicketDraftItemQuantity(current, itemId, quantity),
+      );
+      setDraftError("");
     } catch (cause) {
-      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
-    }
-  }
-
-  function save(): void {
-    setSubmitted(true);
-    try {
-      if (items.length === 0) throw new Error(t.selectProductsFirst);
-      if (id) {
-        const existing = ticketRepository.getTicket(id, false);
-        if (!existing) throw new Error(t.loadFailed);
-        ticketRepository.updateTicket(id, updateTicketFromDraft(existing, customerId || existing.customerId, items));
-      } else {
-        if (choiceError) return; // shown under the customer card or the amount field
-        recordSale(buildTicketFromDraft(customerId || WALK_IN_CUSTOMER_ID, items), choice);
-      }
-      dispatch(clearFormDirty());
-      dispatch(refreshCompleted());
-      router.replace('/ledger/tickets');
-    } catch (cause) {
-      setError(getLedgerErrorMessage(cause, t, t.saveFailed));
+      setDraftError(getLedgerErrorMessage(cause, t, t.saveFailed));
     }
   }
 
   const total = calculateTicketTotal(items);
   const choice: SalePaymentChoice =
-    saleKind === 'PARTIAL' ? { kind: 'PARTIAL', amountMillimes: parseAmountOrNull(partialAmount) } : { kind: saleKind };
-  const choiceError = isNew && items.length > 0 ? validateSaleChoice(choice, total, customerId || null) : null;
-  const customerError = choiceError === 'kridiNeedsCustomer' ? t.kridiNeedsCustomer : undefined;
-  const amountError =
-    choiceError === 'partialAmountInvalid' && (submitted || partialAmount !== '')
+    saleKind === "PARTIAL"
+      ? { kind: "PARTIAL", amountMillimes: parseAmountOrNull(partialAmount) }
+      : { kind: saleKind };
+  const choiceError =
+    isNew && items.length > 0
+      ? validateSaleChoice(choice, total, customerId || null)
+      : null;
+  const customerError =
+    choiceError === "kridiNeedsCustomer" ? t.kridiNeedsCustomer : undefined;
+  const partialAmountRuleError =
+    choiceError === "partialAmountInvalid"
       ? t.partialAmountInvalid
-      : choiceError === 'partialEqualsTotal'
+      : choiceError === "partialEqualsTotal"
         ? t.partialEqualsTotal
         : undefined;
+  const ticketFields = useFieldErrors({
+    fieldOrder: TICKET_FIELDS,
+    validate: () => ({
+      customer: customerError,
+      items: items.length === 0 ? t.selectProductsFirst : undefined,
+      partialAmount: partialAmountRuleError,
+    }),
+    fieldErrorFor: ledgerFieldErrorFor(
+      {
+        kridiNeedsCustomer: "customer",
+        partialAmountInvalid: "partialAmount",
+        partialEqualsTotal: "partialAmount",
+        invalidQuantity: "items",
+      },
+      t,
+    ),
+    scrollRef,
+  });
+  const amountError =
+    partialAmount !== ""
+      ? partialAmountRuleError
+      : ticketFields.errorOf("partialAmount");
+  const itemsError = ticketFields.errorOf("items");
   const ticketIsWalkIn = isWalkInCustomer(initialCustomer);
   const saleOptions: SegmentOption<SalePaymentKind>[] = [
-    { value: 'PAID', label: t.statusPaidShort, tone: 'paid' },
-    { value: 'PARTIAL', label: t.statusPartialShort, tone: 'partial' },
-    { value: 'UNPAID', label: t.statusKridiShort, tone: 'debt' },
+    { value: "PAID", label: t.statusPaidShort, tone: "paid" },
+    { value: "PARTIAL", label: t.statusPartialShort, tone: "partial" },
+    { value: "UNPAID", label: t.statusKridiShort, tone: "debt" },
   ];
   const saveLabel = (() => {
     if (!isNew) return t.save;
     const label = getSaleSaveLabel(choice, total);
     const money = (value: number) => formatMillimeAmount(value, language);
-    if (label.key === 'collectWithRemainder') {
-      return formatMessage(t.collectWithRemainder, { paid: money(label.params.paid), rest: money(label.params.rest) });
+    if (label.key === "collectWithRemainder") {
+      return formatMessage(t.collectWithRemainder, {
+        paid: money(label.params.paid),
+        rest: money(label.params.rest),
+      });
     }
     return formatMessage(t[label.key], { amount: money(label.params.amount) });
   })();
-  const saveButtonClass = isNew && saleKind !== 'UNPAID' ? 'ui-button-paid' : 'ui-button-primary';
+  const collectedMillimes = isNew ? getSalePaymentAmount(choice, total) : 0;
+
+  async function saveTicket() {
+    const editedTicket = initial.ticket;
+    if (editedTicket) {
+      return ticketRepository.updateTicket(
+        editedTicket.id,
+        updateTicketFromDraft(
+          editedTicket,
+          customerId || editedTicket.customerId,
+          items,
+        ),
+      );
+    }
+    const sale = await recordSale(
+      buildTicketFromDraft(customerId || WALK_IN_CUSTOMER_ID, items),
+      choice,
+    );
+    return sale.ticket;
+  }
+
+  const saveAction = useAsyncAction(() => {
+    const saved = { ticketId: "" };
+    return {
+      checkFields: ticketFields.checkFields,
+      showFieldError: ticketFields.showReportedError,
+      work: saveTicket,
+      loaderLabel: t.savingTicket,
+      loaderDetail: formatMessage(t.itemsAndTotal, {
+        count: items.length,
+        amount: formatMillimeAmount(total, language),
+      }),
+      successToast: {
+        title: t.ticketSavedToast,
+        detail:
+          collectedMillimes > 0
+            ? formatMessage(t.amountCollected, {
+                amount: formatMillimeAmount(collectedMillimes, language),
+              })
+            : formatMessage(t.itemsCount, { count: items.length }),
+        view: () =>
+          router.push({
+            pathname: "/ledger/ticket-detail",
+            params: { id: saved.ticketId },
+          }),
+      },
+      onSuccess: (ticket: Ticket) => {
+        saved.ticketId = ticket.id;
+        dispatch(clearFormDirty());
+        dispatch(refreshCompleted());
+        router.replace("/ledger/tickets");
+      },
+      failureThing: t.thingTicket,
+      keepValuesMessage: t.valuesKept,
+    };
+  });
 
   const footer = (
     <>
@@ -253,19 +424,25 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
             onChange={setSaleKind}
             accessibilityLabel={t.paymentStatus}
           />
-          {saleKind === 'PARTIAL' ? (
+          {saleKind === "PARTIAL" ? (
             <View className="gap-1.5">
               <MillimeInput
+                ref={ticketFields.register("partialAmount")}
                 label={t.amountReceived}
                 value={partialAmount}
                 onChangeText={setPartialAmount}
                 suffix={t.currencySuffix}
                 error={amountError}
               />
-              {!amountError && choice.kind === 'PARTIAL' && choice.amountMillimes ? (
+              {!amountError &&
+              choice.kind === "PARTIAL" &&
+              choice.amountMillimes ? (
                 <Text className="font-plex-semibold text-label text-debt">
                   {formatMessage(t.remainingToKridi, {
-                    amount: formatMillimeAmount(total - getSalePaymentAmount(choice, total), language),
+                    amount: formatMillimeAmount(
+                      total - getSalePaymentAmount(choice, total),
+                      language,
+                    ),
                   })}
                 </Text>
               ) : null}
@@ -273,29 +450,29 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
           ) : null}
         </>
       ) : null}
-      <Pressable
-        accessibilityRole="button"
+      <BusyButton
+        variant={isNew && saleKind !== "UNPAID" ? "paid" : "primary"}
+        label={saveLabel}
         accessibilityLabel={saveLabel}
-        accessibilityState={{ disabled: items.length === 0 }}
-        className={`${saveButtonClass} min-h-button-lg ${items.length === 0 ? 'ui-button-disabled' : ''}`}
-        onPress={save}
-      >
-        <Text numberOfLines={2} className="type-button text-center text-surface">
-          {saveLabel}
-        </Text>
-      </Pressable>
+        busy={saveAction.busy}
+        busyLabel={t.saving}
+        disabled={createProductAction.busy}
+        className="min-h-button-lg"
+        onPress={() => void saveAction.run()}
+      />
     </>
   );
 
   return (
-    <ScreenScroll footer={footer} footerWithSafeArea>
-      {error ? <InfoBanner tone="error" title={error} /> : null}
+    <ScreenScroll footer={footer} footerWithSafeArea scrollRef={scrollRef}>
+      {draftError ? <InfoBanner tone="error" title={draftError} /> : null}
 
       <CustomerPickerCard
-        value={isWalkInCustomer(customerId) ? '' : customerId}
+        ref={ticketFields.register("customer")}
+        value={isWalkInCustomer(customerId) ? "" : customerId}
         onChange={setCustomerId}
         error={customerError}
-        walkInAllowed={(isNew && saleKind === 'PAID') || ticketIsWalkIn}
+        walkInAllowed={(isNew && saleKind === "PAID") || ticketIsWalkIn}
       />
 
       <View className="flex-row gap-3">
@@ -315,18 +492,37 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
         </Pressable>
       </View>
 
-      <View className="ui-card-flush">
-        <Text accessibilityRole="header" className="type-heading px-4 pt-3.5 pb-1">
+      <View
+        ref={ticketFields.register("items")}
+        accessible={Boolean(itemsError)}
+        accessibilityLabel={itemsError}
+        className={`ui-card-flush ${itemsError ? "ui-input-error" : ""}`}
+      >
+        <Text
+          accessibilityRole="header"
+          className="type-heading px-4 pt-3.5 pb-1"
+        >
           {formatMessage(t.articlesCount, { count: items.length })}
         </Text>
-        {items.length === 0 ? <Text className="type-caption px-4 pb-2">{t.noItemsYet}</Text> : null}
+        {itemsError ? (
+          <View className="px-4 pb-1">
+            <FieldErrorText message={itemsError} />
+          </View>
+        ) : null}
+        {items.length === 0 ? (
+          <Text className="type-caption px-4 pb-2">{t.noItemsYet}</Text>
+        ) : null}
         {items.map((item, index) => (
           <TicketLineRow
             key={item.id}
             item={item}
             separated={index > 0}
             onQuantityChange={(quantity) => changeQuantity(item.id, quantity)}
-            onRemove={() => setItems((current) => current.filter((line) => line.id !== item.id))}
+            onRemove={() =>
+              setItems((current) =>
+                current.filter((line) => line.id !== item.id),
+              )
+            }
           />
         ))}
         <Pressable
@@ -335,7 +531,9 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
           onPress={openCreateMissing}
         >
           <Icon name="add-circle-outline" size={20} className="text-primary" />
-          <Text className="font-plex-semibold text-body text-primary">{t.missingProduct}</Text>
+          <Text className="font-plex-semibold text-body text-primary">
+            {t.missingProduct}
+          </Text>
         </Pressable>
       </View>
 
@@ -355,14 +553,45 @@ function TicketForm({ id, initialCustomerId }: { id?: string; initialCustomerId?
       <BottomSheet
         visible={createOpen}
         title={t.addProduct}
-        helper={pendingBarcode ? isolateLtr(formatMessage(t.unknownBarcodeTitle, { code: pendingBarcode })) : t.draftKept}
+        helper={
+          pendingBarcode
+            ? isolateLtr(
+                formatMessage(t.unknownBarcodeTitle, { code: pendingBarcode }),
+              )
+            : t.draftKept
+        }
         onClose={closeCreate}
         confirmLabel={t.save}
-        onConfirm={saveNewProduct}
+        confirmBusy={createProductAction.busy}
+        onConfirm={() => void createProductAction.run()}
       >
-        {pendingBarcode ? <InfoBanner tone="warning" title={t.unknownBarcode} /> : null}
-        <LedgerField label={t.productName} value={newProductName} onChangeText={setNewProductName} />
-        <MillimeInput label={t.price} value={newProductPrice} onChangeText={setNewProductPrice} suffix={t.currencySuffix} />
+        {newProductError ? (
+          <InfoBanner tone="error" title={newProductError} />
+        ) : null}
+        {pendingBarcode ? (
+          <InfoBanner tone="warning" title={t.unknownBarcode} />
+        ) : null}
+        <LedgerField
+          ref={newProductFields.register("name")}
+          label={t.productName}
+          value={newProductName}
+          error={newProductFields.errorOf("name")}
+          onChangeText={(value) => {
+            setNewProductName(value);
+            newProductFields.fieldChanged("name");
+          }}
+        />
+        <MillimeInput
+          ref={newProductFields.register("price")}
+          label={t.price}
+          value={newProductPrice}
+          error={newProductFields.errorOf("price")}
+          onChangeText={(value) => {
+            setNewProductPrice(value);
+            newProductFields.fieldChanged("price");
+          }}
+          suffix={t.currencySuffix}
+        />
       </BottomSheet>
     </ScreenScroll>
   );
