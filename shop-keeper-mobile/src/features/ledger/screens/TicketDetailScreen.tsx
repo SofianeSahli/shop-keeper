@@ -170,8 +170,8 @@ export function TicketDetailScreen() {
               className="ui-button-paid"
               onPress={() => router.push({ pathname: '/ledger/payment-form', params: { customerId: ticket.customerId } })}
             >
-              <Icon name="cash-outline" size={20} className="text-surface" />
-              <Text className="type-button text-surface">{t.collect}</Text>
+              <Icon name="cash-outline" size={20} className="text-on-fill" />
+              <Text className="type-button text-on-fill">{t.collect}</Text>
             </Pressable>
           ) : null}
           <Pressable

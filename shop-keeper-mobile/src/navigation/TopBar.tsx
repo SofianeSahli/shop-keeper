@@ -5,6 +5,7 @@ import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { getActiveFeature, getActiveItem, isNestedRoute } from './features';
 import { useAppNavigation } from './useAppNavigation';
 import { LanguageMenu } from './LanguageMenu';
+import { ThemeToggle } from './ThemeToggle';
 import { useTopBarState } from './TopBarContext';
 import { useDevTools } from './useDevTools';
 
@@ -42,8 +43,8 @@ export function TopBar() {
             onPress={() => activeItem.id !== 'home' && pushTo('/')}
             onLongPress={devTools?.seedLedger}
           >
-            <View className="h-[34px] w-[34px] items-center justify-center rounded-control bg-primary">
-              <Text className="font-plex-bold text-heading text-surface">{t.appMark}</Text>
+            <View className="h-[34px] w-[34px] items-center justify-center rounded-control bg-primary-fill">
+              <Text className="font-plex-bold text-heading text-on-fill">{t.appMark}</Text>
             </View>
           </Pressable>
         )}
@@ -61,6 +62,7 @@ export function TopBar() {
           </Pressable>
         ) : null}
         <LanguageMenu />
+        <ThemeToggle />
       </View>
     </View>
   );

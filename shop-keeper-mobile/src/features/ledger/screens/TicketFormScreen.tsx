@@ -484,7 +484,7 @@ function TicketForm({ id, initialCustomerId, initial }: TicketFormProps) {
         />
         <Pressable
           accessibilityRole="button"
-          className="min-h-[64px] flex-1 flex-row items-center justify-center gap-2 rounded-control-lg border border-line-strong bg-surface px-3 active:bg-muted"
+          className="min-h-[64px] flex-1 flex-row items-center justify-center gap-2 rounded-control-lg border border-line-strong bg-surface-2 px-3 active:bg-muted"
           onPress={() => setSearchOpen(true)}
         >
           <Icon name="search" size={22} className="text-primary" />

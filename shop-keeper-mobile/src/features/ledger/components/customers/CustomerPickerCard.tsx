@@ -56,7 +56,7 @@ export function CustomerPickerCard({ value, onChange, error, walkInAllowed = fal
     setCreateOpen(false);
   }
 
-  const border = error ? 'ui-input-error' : selected ? 'ui-input-selected' : 'border-dashed border-line-strong';
+  const border = error ? 'ui-input-error' : selected ? 'ui-input-selected' : 'border-dashed border-line-dashed';
   const cardLabel = selected
     ? `${t.customer}: ${selected.displayLabel}, ${formatMessage(t.alreadyOwes, {
         amount: formatMillimeAmount(selected.balanceMillimes, language),
@@ -72,7 +72,7 @@ export function CustomerPickerCard({ value, onChange, error, walkInAllowed = fal
           accessibilityRole="button"
           accessibilityLabel={cardLabel}
           accessibilityHint={error ?? t.changeCustomer}
-          className={`min-h-[64px] flex-1 flex-row items-center gap-3 rounded-control-lg border bg-surface px-3 ${border}`}
+          className={`min-h-[64px] flex-1 flex-row items-center gap-3 rounded-control-lg border bg-surface-2 px-3 ${border}`}
           onPress={() => setPickerOpen(true)}
         >
           {selected ? (

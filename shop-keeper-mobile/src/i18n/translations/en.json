@@ -93,6 +93,8 @@
   "languageNameFr": "Français",
   "languageNameAr": "العربية",
   "languageNameEn": "English",
+  "switchToDark": "Switch to dark mode",
+  "switchToLight": "Switch to light mode",
   "savedOnPhone": "Saved on this phone",
   "kridiToCollect": "Kridi to collect",
   "ticketsCount": "{count} tickets",

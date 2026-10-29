@@ -93,6 +93,8 @@
   "languageNameFr": "Français",
   "languageNameAr": "العربية",
   "languageNameEn": "English",
+  "switchToDark": "التبديل إلى الوضع الداكن",
+  "switchToLight": "التبديل إلى الوضع الفاتح",
   "savedOnPhone": "محفوظ على الهاتف",
   "kridiToCollect": "كريدي للتحصيل",
   "ticketsCount": "{count} فاتورة",

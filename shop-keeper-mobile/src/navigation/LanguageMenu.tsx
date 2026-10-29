@@ -31,7 +31,7 @@ export function LanguageMenu() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${t.language}, ${t[current.nameKey]}`}
-        className="min-h-touch flex-row items-center gap-1.5 rounded-full border border-line-strong bg-surface px-3 active:bg-muted"
+        className="min-h-touch flex-row items-center gap-1.5 rounded-full border border-line-strong bg-surface-2 px-3 active:bg-muted"
         onPress={() => setOpen(true)}
       >
         <Icon name="globe-outline" size={18} className="text-ink-2" />

@@ -4,10 +4,10 @@ import { Icon, IconName } from './Icon';
 export type BannerTone = 'warning' | 'success' | 'info' | 'error';
 
 const TONES: Record<BannerTone, { container: string; text: string; icon: IconName; button: string }> = {
-  warning: { container: 'bg-partial-soft border-partial-line', text: 'text-warn-strong', icon: 'warning', button: 'bg-warn-strong' },
-  success: { container: 'bg-paid-soft border-paid-soft', text: 'text-paid', icon: 'checkmark-circle', button: 'bg-paid' },
-  info: { container: 'bg-primary-faint border-primary-soft', text: 'text-primary', icon: 'information-circle', button: 'bg-primary' },
-  error: { container: 'bg-error-soft border-error-line', text: 'text-error-strong', icon: 'alert-circle', button: 'bg-error' },
+  warning: { container: 'bg-partial-soft border-partial-line', text: 'text-warn-strong', icon: 'warning', button: 'bg-warn-fill' },
+  success: { container: 'bg-paid-soft border-paid-soft', text: 'text-paid', icon: 'checkmark-circle', button: 'bg-paid-fill' },
+  info: { container: 'bg-primary-faint border-primary-soft', text: 'text-primary', icon: 'information-circle', button: 'bg-primary-fill' },
+  error: { container: 'bg-error-soft border-error-line', text: 'text-error-strong', icon: 'alert-circle', button: 'bg-error-fill' },
 };
 
 interface InfoBannerProps {
@@ -40,7 +40,7 @@ export function InfoBanner({ tone, title, text, actionLabel, onAction }: InfoBan
           className={`min-h-touch items-center justify-center self-start rounded-control px-4 ${colors.button}`}
           onPress={onAction}
         >
-          <Text className="font-plex-bold text-label text-surface">{actionLabel}</Text>
+          <Text className="font-plex-bold text-label text-on-fill">{actionLabel}</Text>
         </Pressable>
       ) : null}
     </View>

@@ -1,3 +1,4 @@
+@import './theme/tokens.css';
 @import './features/ledger/styles/ledger.css';
 @import './components/ui/ui.css';
 

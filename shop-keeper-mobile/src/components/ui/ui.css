@@ -1,5 +1,4 @@
 @layer components {
-  /* Typography: Android selects the weight by family name, so each size is paired with its family. */
   .type-display-lg {
     @apply font-plex-bold text-display-lg text-ink;
   }
@@ -40,7 +39,6 @@
     @apply font-plex-bold text-body;
   }
 
-  /* Surfaces */
   .ui-card {
     @apply gap-3 rounded-card border border-line bg-surface p-4;
   }
@@ -53,21 +51,20 @@
     @apply flex-row items-center gap-1.5 self-start rounded-full px-3 py-1;
   }
 
-  /* Buttons */
   .ui-button {
     @apply min-h-button flex-row items-center justify-center gap-2 rounded-control-lg px-4;
   }
 
   .ui-button-primary {
-    @apply min-h-button flex-row items-center justify-center gap-2 rounded-control-lg bg-primary px-4;
+    @apply min-h-button flex-row items-center justify-center gap-2 rounded-control-lg bg-primary-fill px-4;
   }
 
   .ui-button-paid {
-    @apply min-h-button flex-row items-center justify-center gap-2 rounded-control-lg bg-paid px-4;
+    @apply min-h-button flex-row items-center justify-center gap-2 rounded-control-lg bg-paid-fill px-4;
   }
 
   .ui-button-outline {
-    @apply min-h-button flex-row items-center justify-center gap-2 rounded-control-lg border border-line-strong bg-surface px-4;
+    @apply min-h-button flex-row items-center justify-center gap-2 rounded-control-lg border border-line-strong bg-surface-2 px-4;
   }
 
   .ui-button-disabled {
@@ -78,9 +75,8 @@
     @apply min-h-touch min-w-touch items-center justify-center rounded-control;
   }
 
-  /* Inputs */
   .ui-input {
-    @apply min-h-[50px] rounded-control border border-line-strong bg-surface px-4 font-plex text-body text-ink;
+    @apply min-h-[50px] rounded-control border border-line-strong bg-surface-2 px-4 font-plex text-body text-ink;
   }
 
   .ui-input-selected {
@@ -92,23 +88,21 @@
   }
 
   .ui-fab-shadow {
-    @apply shadow-lg shadow-ink/30;
+    @apply shadow-lg shadow-elevation/30;
   }
 
-  /* Inline barcode viewfinder (product form) */
   .ui-viewfinder {
     @apply h-[200px] items-center justify-center overflow-hidden rounded-tile bg-viewfinder;
   }
 
   .ui-viewfinder-corner {
-    @apply absolute h-7 w-7 border-surface;
+    @apply absolute h-7 w-7 border-viewfinder-mark;
   }
 
   .ui-viewfinder-line {
     @apply absolute inset-x-8 top-1/2 h-0.5 rounded-full bg-scan-line;
   }
 
-  /* Amounts keep left-to-right digit order inside right-to-left layouts. */
   .ui-ltr {
     direction: ltr;
   }

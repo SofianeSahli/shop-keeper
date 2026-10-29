@@ -12,7 +12,7 @@ interface SearchFieldProps {
 export function SearchField({ value, onChangeText, placeholder, autoFocus = false }: SearchFieldProps) {
   const { t } = useLedgerTranslations();
   return (
-    <View className="min-h-[50px] flex-row items-center gap-2 rounded-control border border-line-strong bg-surface ps-3">
+    <View className="min-h-[50px] flex-row items-center gap-2 rounded-control border border-line-strong bg-surface-2 ps-3">
       <Icon name="search" size={20} className="text-ink-2" />
       <TextInput
         accessibilityLabel={placeholder}

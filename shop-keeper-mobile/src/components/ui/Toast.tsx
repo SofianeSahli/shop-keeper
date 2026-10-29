@@ -4,9 +4,9 @@ import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { Icon, IconName } from './Icon';
 
 const KIND_STYLES: Record<ToastKind, { card: string; iconCircle: string; icon: string; detail: string; iconName: IconName }> = {
-  success: { card: 'bg-paid-soft border-paid-line', iconCircle: 'bg-paid', icon: 'text-surface', detail: 'text-ink-2', iconName: 'checkmark' },
-  error: { card: 'bg-error-soft border-error-line', iconCircle: 'bg-error', icon: 'text-surface', detail: 'text-error-strong', iconName: 'alert' },
-  info: { card: 'bg-primary-soft border-primary-line', iconCircle: 'bg-primary', icon: 'text-surface', detail: 'text-ink-2', iconName: 'information' },
+  success: { card: 'bg-paid-soft border-paid-line', iconCircle: 'bg-paid-fill', icon: 'text-on-fill', detail: 'text-ink-2', iconName: 'checkmark' },
+  error: { card: 'bg-error-soft border-error-line', iconCircle: 'bg-error-fill', icon: 'text-on-fill', detail: 'text-error-strong', iconName: 'alert' },
+  info: { card: 'bg-primary-soft border-primary-line', iconCircle: 'bg-primary-fill', icon: 'text-on-fill', detail: 'text-ink-2', iconName: 'information' },
   pending: { card: 'bg-surface border-line', iconCircle: 'bg-primary-soft', icon: 'text-primary', detail: 'text-ink-2', iconName: 'sync' },
 };
 
@@ -28,7 +28,7 @@ export function Toast({ toast, onAction, onDismiss }: ToastProps) {
   const styles = KIND_STYLES[toast.kind];
 
   return (
-    <View className={`min-h-toast flex-row items-center gap-3 rounded-toast border py-2 ps-3 pe-1 shadow-md shadow-ink/20 ${styles.card}`}>
+    <View className={`min-h-toast flex-row items-center gap-3 rounded-toast border py-2 ps-3 pe-1 shadow-md shadow-elevation/20 ${styles.card}`}>
       <View
         accessible
         accessibilityRole={toast.kind === 'error' ? 'alert' : 'text'}
