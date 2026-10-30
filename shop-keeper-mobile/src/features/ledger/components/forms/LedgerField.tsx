@@ -19,7 +19,7 @@ export function LedgerField({ label, value, error, hint, suffix, accessory, onCh
       <Text className="type-label">{label}</Text>
       <View className="flex-row items-center gap-2">
         <View
-          className={`min-h-[50px] flex-1 flex-row items-center rounded-control border bg-surface px-4 ${
+          className={`min-h-[50px] flex-1 flex-row items-center rounded-control border bg-surface-2 px-4 ${
             error ? 'ui-input-error' : 'border-line-strong'
           }`}
         >

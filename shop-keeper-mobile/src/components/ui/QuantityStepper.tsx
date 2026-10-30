@@ -7,7 +7,6 @@ interface QuantityStepperProps {
   value: number;
   onChange: (value: number) => void;
   min?: number;
-  /** Names the item for screen readers, e.g. the product name. */
   itemLabel: string;
 }
 
@@ -17,7 +16,7 @@ export function QuantityStepper({ value, onChange, min = 1, itemLabel }: Quantit
   const change = (delta: number) => onChange(clampQuantity(value + delta, min));
 
   return (
-    <View className="flex-row items-center overflow-hidden rounded-control border border-line-strong bg-surface">
+    <View className="flex-row items-center overflow-hidden rounded-control border border-line-strong bg-surface-2">
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${t.decreaseQuantity}, ${itemLabel}`}

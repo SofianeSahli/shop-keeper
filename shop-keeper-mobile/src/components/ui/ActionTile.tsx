@@ -21,17 +21,17 @@ export function ActionTile({ variant, icon, title, subtitle, tint = 'primary', o
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
-        className="min-h-[84px] flex-row items-center gap-3.5 rounded-tile bg-primary px-4 py-4 active:opacity-90"
+        className="min-h-[84px] flex-row items-center gap-3.5 rounded-tile bg-primary-fill px-4 py-4 active:opacity-90"
         onPress={onPress}
       >
-        <View className="h-[52px] w-[52px] items-center justify-center rounded-control-lg bg-surface/15">
-          <Icon name={icon} size={28} className="text-surface" />
+        <View className="h-[52px] w-[52px] items-center justify-center rounded-control-lg bg-on-fill/15">
+          <Icon name={icon} size={28} className="text-on-fill" />
         </View>
         <View className="flex-1 gap-0.5">
-          <Text className="font-plex-bold text-title text-surface">{title}</Text>
+          <Text className="font-plex-bold text-title text-on-fill">{title}</Text>
           {subtitle ? <Text className="font-plex text-label text-primary-soft">{subtitle}</Text> : null}
         </View>
-        <Icon name="chevron-forward" directional className="text-surface" />
+        <Icon name="chevron-forward" directional className="text-on-fill" />
       </Pressable>
     );
   }

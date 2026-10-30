@@ -49,13 +49,13 @@ export function ConfirmAction({
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                className="ui-button bg-debt"
+                className="ui-button bg-debt-fill"
                 onPress={() => {
                   setVisible(false);
                   onConfirm();
                 }}
               >
-                <Text className="type-button text-surface">{confirmLabel}</Text>
+                <Text className="type-button text-on-fill">{confirmLabel}</Text>
               </Pressable>
             </View>
           </View>

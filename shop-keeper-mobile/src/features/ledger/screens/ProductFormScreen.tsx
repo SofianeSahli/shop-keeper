@@ -185,7 +185,7 @@ function ProductForm({ id, initialBarcode, product, catalog }: ProductFormProps)
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t.rescan}
-            className="h-[52px] w-[52px] items-center justify-center rounded-control border border-line-strong bg-surface active:bg-muted"
+            className="h-[52px] w-[52px] items-center justify-center rounded-control border border-line-strong bg-surface-2 active:bg-muted"
             onPress={() => setScannerArmed(true)}
           >
             <Icon name="scan-outline" className="text-primary" />

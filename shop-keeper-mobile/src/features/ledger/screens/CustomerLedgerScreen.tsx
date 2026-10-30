@@ -119,8 +119,8 @@ export function CustomerLedgerScreen() {
               className="ui-button-paid flex-1"
               onPress={() => router.push({ pathname: '/ledger/payment-form', params: { customerId: customer.id } })}
             >
-              <Icon name="cash-outline" size={20} className="text-surface" />
-              <Text className="type-button text-surface">{t.collect}</Text>
+              <Icon name="cash-outline" size={20} className="text-on-fill" />
+              <Text className="type-button text-on-fill">{t.collect}</Text>
             </Pressable>
           </View>
         </View>

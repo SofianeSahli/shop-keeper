@@ -2,6 +2,8 @@ import { Provider, useDispatch } from 'react-redux';
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -14,6 +16,7 @@ import {
 import { store } from '@/store';
 import { openLedgerDatabase } from '@/db';
 import { getSavedLanguage } from '@/i18n/languageStorage';
+import { applySavedThemeChoice } from '@/theme/applySavedThemeChoice';
 import { getTextDirection } from '@/i18n';
 import { useLedgerTranslations } from '@/i18n/useTranslations';
 import { languageChanged } from '@/features/ledger/store/ledgerSlice';
@@ -23,6 +26,8 @@ import { BlockingLoader, ToastHost } from '@/components/ui';
 import { TopBarProvider } from '@/navigation/TopBarContext';
 import '../global.css';
 import '@/components/ui/interop';
+
+void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   return (
@@ -52,9 +57,9 @@ function RootContent() {
 
   const openDatabase = useCallback((isActive: () => boolean = () => true) => {
     void openLedgerDatabase()
-      .then(getSavedLanguage)
+      .then(() => Promise.all([getSavedLanguage(), applySavedThemeChoice()]))
       .then(
-        (savedLanguage) => {
+        ([savedLanguage]) => {
           if (!isActive()) return;
           dispatch(languageChanged(savedLanguage));
           setDatabaseStatus('ready');
@@ -79,6 +84,11 @@ function RootContent() {
   }
 
   const fontsSettled = fontsLoaded || Boolean(fontError);
+  const startupSettled = fontsSettled && databaseStatus !== 'loading';
+
+  useEffect(() => {
+    if (startupSettled) void SplashScreen.hideAsync();
+  }, [startupSettled]);
 
   if (!fontsSettled || databaseStatus !== 'ready') {
     return (
@@ -89,7 +99,7 @@ function RootContent() {
               {t.databaseStartupFailed}
             </Text>
             <Pressable accessibilityRole="button" className="ui-button-primary min-w-button" onPress={retryDatabase}>
-              <Text className="type-button text-surface">{t.retry}</Text>
+              <Text className="type-button text-on-fill">{t.retry}</Text>
             </Pressable>
           </>
         ) : (
@@ -103,6 +113,7 @@ function RootContent() {
 
   return (
     <TopBarProvider>
+      <StatusBar style="auto" />
       <View className={`flex-1 bg-ground ${directionClass}`}>
         <TopBar />
         <View className="flex-1">

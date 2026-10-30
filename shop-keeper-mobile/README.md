@@ -37,6 +37,11 @@ Application du commerçant : un **registre de crédit (kridi)** qui fonctionne *
 - Création d'un client ou d'un produit directement depuis un ticket, sans perdre ce qui a déjà été saisi.
 - Confirmation demandée avant de quitter un formulaire non enregistré.
 
+**Thème clair et sombre** ([spec 005](../specs/005-dark-mode/spec.md))
+- Bouton lune / soleil à côté du bouton de langue : un appui bascule toute l'app, sans perdre ce qui est saisi.
+- Au premier lancement, l'app suit le réglage clair / sombre du téléphone. Après un choix manuel, ce choix est gardé dans `app_settings` (clé `theme`, comme la langue) et appliqué avant que l'écran de lancement disparaisse.
+- Toutes les couleurs sont des rôles définis une seule fois dans `src/theme/tokens.css`, avec une valeur claire et une valeur sombre. Le viseur de la caméra reste identique dans les deux thèmes.
+
 ---
 
 ## Stack
@@ -136,6 +141,7 @@ Ces règles résument la [constitution](../.specify/memory/constitution.md).
 - **Textes.** Aucun texte en dur : tout passe par `src/i18n/translations/{fr,ar,en}.json`, et les trois fichiers doivent rester synchronisés.
 - **Direction.** Utiliser des classes adaptées au sens de lecture (`start` / `end`) plutôt que `left` / `right`.
 - **Styles.** Classes NativeWind ou fichiers `.css` dédiés. Pas de `StyleSheet` ni de style inline dans les TSX.
+- **Couleurs.** Uniquement des rôles (`bg-surface`, `text-ink`, `bg-primary-fill`…). Une valeur de couleur n'existe que dans `src/theme/tokens.css` ; ESLint refuse les `#hex`, `rgb(` et `rgba(` dans le code. Un fond plein prend un rôle `*-fill` et son texte `text-on-fill`.
 - **Accessibilité.** `accessibilityLabel` et `accessibilityRole` sur chaque contrôle, zones tactiles d'au moins 48 px.
 - **États.** Chaque écriture passe par `useAsyncAction` (bouton occupé, loader après 300 ms, toast de résultat, « Réessayer ») et chaque lecture par `useLedgerQuery` (squelettes, « Mise à jour… », erreur avec « Réessayer »). Un écran ne gère jamais son propre chargement.
 - **Hors ligne.** Aucun appel réseau dans les features 001 et 002 : les données restent sur l'appareil.

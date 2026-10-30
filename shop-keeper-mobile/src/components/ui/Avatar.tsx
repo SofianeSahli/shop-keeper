@@ -13,7 +13,7 @@ export function Avatar({ label, size = 'md' }: AvatarProps) {
       importantForAccessibility="no-hide-descendants"
       className={`items-center justify-center rounded-full bg-muted ${size === 'lg' ? 'h-11 w-11' : 'h-10 w-10'}`}
     >
-      <Text className="font-plex-bold text-label text-ink-2">{getInitials(label)}</Text>
+      <Text className="font-plex-bold text-label text-avatar-ink">{getInitials(label)}</Text>
     </View>
   );
 }

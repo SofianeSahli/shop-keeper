@@ -109,7 +109,7 @@ export function PaymentForm({
 
           <Text className="type-label">{t.amountReceived}</Text>
           <View
-            className={`min-h-[72px] flex-row items-center rounded-control-lg border bg-surface px-4 ${
+            className={`min-h-[72px] flex-row items-center rounded-control-lg border bg-surface-2 px-4 ${
               amountError ? 'ui-input-error' : 'border-line-strong'
             }`}
           >

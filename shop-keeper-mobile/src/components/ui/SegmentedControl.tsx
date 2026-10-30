@@ -9,7 +9,7 @@ export interface SegmentOption<T extends string> {
 }
 
 const SELECTED: Record<SegmentTone, { container: string; text: string }> = {
-  paid: { container: 'bg-paid border-paid', text: 'text-surface' },
+  paid: { container: 'bg-paid-fill border-paid-fill', text: 'text-on-fill' },
   partial: { container: 'bg-partial-soft border-partial-line', text: 'text-partial' },
   debt: { container: 'bg-debt-soft border-debt-line', text: 'text-debt' },
 };
@@ -33,7 +33,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, a
             accessibilityRole="radio"
             accessibilityState={{ selected, checked: selected }}
             className={`min-h-touch flex-1 items-center justify-center rounded-control border ${
-              selected ? colors.container : 'border-line-strong bg-surface'
+              selected ? colors.container : 'border-line-strong bg-surface-2'
             }`}
             onPress={() => onChange(option.value)}
           >

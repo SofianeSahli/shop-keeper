@@ -1,3 +1,5 @@
 {
-  "NSCameraUsageDescription": "السماح لتطبيق Shop Keeper باستخدام الكاميرا لمسح الرموز الشريطية للمنتجات."
+  "ios": {
+    "NSCameraUsageDescription": "السماح لتطبيق Shop Keeper باستخدام الكاميرا لمسح الرموز الشريطية للمنتجات."
+  }
 }

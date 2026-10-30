@@ -5,10 +5,10 @@ import { Icon, IconName } from './Icon';
 export type BusyButtonVariant = 'primary' | 'paid' | 'outline' | 'danger';
 
 const VARIANTS: Record<BusyButtonVariant, { button: string; text: string }> = {
-  primary: { button: 'ui-button-primary', text: 'text-surface' },
-  paid: { button: 'ui-button-paid', text: 'text-surface' },
+  primary: { button: 'ui-button-primary', text: 'text-on-fill' },
+  paid: { button: 'ui-button-paid', text: 'text-on-fill' },
   outline: { button: 'ui-button-outline', text: 'text-ink' },
-  danger: { button: 'ui-button border border-debt-line bg-surface active:bg-debt-soft', text: 'text-debt' },
+  danger: { button: 'ui-button border border-debt-line bg-surface-2 active:bg-debt-soft', text: 'text-debt' },
 };
 
 interface BusyButtonProps {
