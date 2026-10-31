@@ -1,6 +1,6 @@
 # Shop Keeper — Application mobile
 
-Application du commerçant : un **registre de crédit (kridi)** qui fonctionne **hors ligne**, en **arabe (RTL)** et en **français (LTR)**. Elle permet de gérer les produits, les clients, les tickets et les paiements, et affiche les totaux du jour.
+Application du commerçant : elle fonctionne **hors ligne**, en **arabe (RTL)** et en **français (LTR)**, et gère aujourd'hui les produits, les clients, les tickets, le **crédit client** et les paiements, avec les totaux du jour. Elle deviendra la caisse de gestion du magasin (stock, ventes, dashboard, employés) une fois connectée au [backend](../shop-keeper-backend/README.md).
 
 ← Retour au [README principal](../README.md)
 
@@ -22,7 +22,7 @@ Application du commerçant : un **registre de crédit (kridi)** qui fonctionne *
 
 ## Fonctionnalités
 
-**Registre kridi** ([spec 001](../specs/001-kridi-credit-ledger/spec.md))
+**Crédit client** ([spec 001](../specs/001-kridi-credit-ledger/spec.md))
 - Catalogue produits : nom, code-barres facultatif, prix de vente.
 - Clients identifiés par un surnom choisi par le commerçant. Le vrai nom et le téléphone sont facultatifs.
 - Tickets créés en scannant ou en choisissant les produits, avec quantités et total avant enregistrement.
@@ -37,6 +37,12 @@ Application du commerçant : un **registre de crédit (kridi)** qui fonctionne *
 - Création d'un client ou d'un produit directement depuis un ticket, sans perdre ce qui a déjà été saisi.
 - Confirmation demandée avant de quitter un formulaire non enregistré.
 
+**Refonte visuelle** ([spec 003](../specs/003-ledger-visual-redesign/spec.md))
+- Nouveau design appliqué à tous les écrans existants.
+
+**Chargements et retours** ([spec 004](../specs/004-async-feedback/spec.md))
+- Accès à la base asynchrones, loader, toasts de résultat, squelettes pendant le chargement, erreurs affichées sur le champ concerné.
+
 **Thème clair et sombre** ([spec 005](../specs/005-dark-mode/spec.md))
 - Bouton lune / soleil à côté du bouton de langue : un appui bascule toute l'app, sans perdre ce qui est saisi.
 - Au premier lancement, l'app suit le réglage clair / sombre du téléphone. Après un choix manuel, ce choix est gardé dans `app_settings` (clé `theme`, comme la langue) et appliqué avant que l'écran de lancement disparaisse.
@@ -48,7 +54,7 @@ Application du commerçant : un **registre de crédit (kridi)** qui fonctionne *
 
 | Domaine | Choix |
 |---|---|
-| Framework | Expo SDK 57, React Native 0.86, React 19 |
+| Framework | Expo SDK 58, React Native 0.88, React 19 |
 | Langage | TypeScript (strict) |
 | Navigation | Expo Router (routes basées sur les fichiers dans `src/app/`, routes typées) |
 | État | Redux Toolkit + React Redux |
@@ -119,7 +125,7 @@ src/
 ```
 Écran ─► useAsyncAction / useLedgerQuery ─► service (règles métier) ─► repository ─► runQueued ─► SQLite (async)
                                     │
-                                    └─► pending_changes   (journal pour la future synchro)
+                                    └─► pending_changes   (journal pour la synchronisation, spec 010)
                                     └─► ledger_audit_events (historique des corrections)
 ```
 
@@ -144,7 +150,7 @@ Ces règles résument la [constitution](../.specify/memory/constitution.md).
 - **Couleurs.** Uniquement des rôles (`bg-surface`, `text-ink`, `bg-primary-fill`…). Une valeur de couleur n'existe que dans `src/theme/tokens.css` ; ESLint refuse les `#hex`, `rgb(` et `rgba(` dans le code. Un fond plein prend un rôle `*-fill` et son texte `text-on-fill`.
 - **Accessibilité.** `accessibilityLabel` et `accessibilityRole` sur chaque contrôle, zones tactiles d'au moins 48 px.
 - **États.** Chaque écriture passe par `useAsyncAction` (bouton occupé, loader après 300 ms, toast de résultat, « Réessayer ») et chaque lecture par `useLedgerQuery` (squelettes, « Mise à jour… », erreur avec « Réessayer »). Un écran ne gère jamais son propre chargement.
-- **Hors ligne.** Aucun appel réseau dans les features 001 et 002 : les données restent sur l'appareil.
+- **Hors ligne.** Chaque écriture va d'abord en SQLite avec une entrée dans `pending_changes`. Les specs 001 à 005 ne font aucun appel réseau ; la synchronisation avec le backend arrive dans la spec 010.
 
 ---
 

@@ -1,58 +1,93 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Shop Keeper — Backend
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+API REST Laravel de l'écosystème Shop Keeper. Elle sert d'abord l'app du commerçant ([`shop-keeper-mobile/`](../shop-keeper-mobile/README.md)), puis les apps client, grossiste et sponsor.
 
-## About Laravel
+← Retour au [README principal](../README.md)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+> **État : phase 1 en cours.** Le projet est encore le squelette Laravel. La première spec, **006 — Authentification et magasin**, ajoute le compte du patron (téléphone + PIN) et la création de son magasin, testables avec Postman.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Stack
 
-## Learning Laravel
+| Domaine | Choix |
+|---|---|
+| Framework | Laravel 13 |
+| Langage | PHP 8.3+ (au minimum 8.3.36, 8.4.27 ou 8.5.12, les versions qui corrigent CVE-2026-109618 et CVE-2026-109619) |
+| Base de données | MySQL 8 (SQLite seulement pour les tests locaux) |
+| Authentification | Laravel Sanctum, un jeton par appareil, connexion par téléphone + PIN |
+| Tests | Pest |
+| Qualité | Pint |
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+---
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Démarrer
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+**Prérequis :** PHP (version corrigée, voir ci-dessus), Composer, MySQL 8.
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+php -v                   # vérifier la version de PHP
+composer install
+cp .env.example .env     # renseigner la base MySQL et les secrets laissés vides
+php artisan key:generate
+php artisan migrate
+php artisan serve        # http://localhost:8000
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Pour déployer : même chose sur le serveur, avec ses propres valeurs dans `.env`. Toute la configuration passe par `.env` ; aucun hébergeur n'est encore choisi.
 
-## Contributing
+### Commandes
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Commande | Effet |
+|---|---|
+| `php artisan serve` | Lance l'API en local |
+| `php artisan test` | Lance les tests |
+| `vendor/bin/pint` | Formate le code, à lancer avant chaque commit |
+| `php artisan migrate` | Applique les migrations |
 
-## Code of Conduct
+---
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Tester avec Postman
 
-## Security Vulnerabilities
+L'API est exposée sous `/api/v1`. Chaque spec livre une collection Postman (ou un fichier OpenAPI que Postman importe) à jour avec ses endpoints.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+1. Importer la collection de la spec dans Postman.
+2. Créer un compte, puis se connecter : la réponse contient un jeton.
+3. Ajouter ce jeton dans l'en-tête `Authorization: Bearer <jeton>` des autres requêtes.
 
-## License
+Les erreurs ont toujours le même format, avec un code stable (par exemple `shop.forbidden`) et sans texte destiné à l'utilisateur : c'est l'app qui traduit le code.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+---
+
+## Architecture
+
+Le code est découpé par domaine métier. Chaque module contient ses modèles, ses actions (les règles métier), ses contrôleurs, ses validations, ses policies, ses migrations, ses routes et ses tests. Un module ne lit ni n'écrit jamais les tables d'un autre : il appelle ses actions ou écoute ses événements.
+
+```
+app/
+├── Shared/          # authentification, magasin courant, format d'erreur, argent
+└── Modules/
+    ├── Identity/    # comptes, appareils, connexion téléphone + PIN      (006)
+    ├── Shops/       # magasins                                          (006)
+    ├── Catalog/     # global_products (catalogue commun), shop_products  (007)
+    ├── Inventory/   # fournisseurs, réceptions, mouvements de stock     (007)
+    ├── Sales/       # ventes, lignes, paiements                         (008)
+    ├── Credit/      # clients, crédit client                            (008)
+    ├── Reporting/   # dashboard                                         (009)
+    └── Sync/        # envoi et récupération des opérations              (010)
+```
+
+Un module n'est créé que lorsqu'une spec en a besoin. Les numéros entre parenthèses suivent l'ordre de la feuille de route.
+
+---
+
+## Règles
+
+Les règles complètes sont dans [`CLAUDE.md`](CLAUDE.md) et dans la [constitution](../.specify/memory/constitution.md). L'essentiel :
+
+- **Isolation.** Chaque table d'un magasin a un `shop_id` ; un utilisateur n'accède jamais aux données d'un autre magasin.
+- **Argent** en entiers dans l'unité mineure de la devise (TND : millimes).
+- **Aucune modification après coup** pour les ventes, paiements, crédits et mouvements de stock : une correction est un nouvel enregistrement.
+- **UUID** générés par le téléphone, stockés en `BINARY(16)`.
+- **Sécurité.** Secrets uniquement dans `.env`, PIN hachés, aucune donnée personnelle dans les logs.
+- **Tests** pour chaque endpoint : succès, validation, accès sans connexion, accès à un autre magasin.

@@ -1,58 +1,65 @@
 # Shop Keeper
 
-> Un écosystème pour aider les petits commerces indépendants (épiceries de quartier, en Tunisie d'abord) à suivre leurs produits, leurs clients, le crédit (*kridi*), les fournisseurs et les prix.
+> Une app de gestion pour les petits commerces indépendants (épiceries, drogueries, quincailleries, boulangeries… en Tunisie d'abord) : magasin, produits, stock, ventes, crédit client et tableau de bord, **sans matériel à acheter**.
 
-Le projet est un **monorepo** qui contient deux applications indépendantes et les spécifications qui les pilotent.
+Le projet est un **monorepo** : une API Laravel, une app par acteur (aujourd'hui l'app du commerçant), et les spécifications qui pilotent le tout.
 
 | Dossier | Rôle | Stack | État |
 |---|---|---|---|
-| [`shop-keeper-mobile/`](shop-keeper-mobile/README.md) | Application du commerçant : catalogue, tickets, kridi, paiements, tableau de bord | React Native · Expo 57 · TypeScript · SQLite | 🟡 En cours (features 001 et 002) |
-| [`shop-keeper-backend/`](shop-keeper-backend/README.md) | API REST : comptes, synchronisation, données partagées | Laravel 13 · PHP 8.3 · MySQL · Sanctum | ⚪ Squelette Laravel, pas encore de code métier |
-| [`specs/`](specs/) | Spécifications fonctionnelles et plans (Spec Kit) | Markdown | Une spec par feature |
+| [`shop-keeper-mobile/`](shop-keeper-mobile/README.md) | App du commerçant : produits, tickets, crédit client, paiements, tableau de bord | Expo 58 · React Native 0.88 · TypeScript · SQLite | 🟢 Specs 001 à 005 terminées, en local sur le téléphone |
+| [`shop-keeper-backend/`](shop-keeper-backend/README.md) | API REST : comptes, magasins, puis stock, ventes, synchronisation | Laravel 13 · PHP 8.3+ · MySQL 8 · Sanctum | 🟡 Phase 1 en cours : spec 006 (authentification et magasin) |
+| [`specs/`](specs/) | Spécifications, plans et tâches (Spec Kit) | Markdown | Une spec par feature |
 
 ---
 
 ## Vision
 
-Aujourd'hui, beaucoup d'épiciers notent les ventes à crédit dans un cahier. Shop Keeper remplace ce cahier par une application simple, utilisable **sans connexion** et **en arabe ou en français**, puis ouvrira peu à peu sur un écosystème plus large :
+Le commerçant gère toute sa boutique avec son téléphone : ventes, stock avec prix d'achat et de vente, crédit client, et plus tard ses employés et ses états de caisse. L'app fonctionne **sans connexion** et **en arabe ou en français**.
 
-1. **Le registre du commerçant** (en cours). Produits, clients, tickets, kridi, paiements et totaux du jour, le tout sur le téléphone.
-2. **Comptes et synchronisation** (à venir). Sauvegarde sur le serveur, plusieurs appareils pour une même boutique, connexion par téléphone + PIN ou par Google.
-3. **Fournisseurs et prix** (à venir). Suivi des achats, des fournisseurs et de l'évolution des prix.
-4. **Données agrégées** (plus tard). Des statistiques anonymisées et soumises à un consentement explicite pour aider commerçants et acheteurs. Les données kridi des clients ne sont **jamais** partagées.
+L'écosystème grandit ensuite en 5 phases, chacune ouverte par un seuil d'usage :
+
+1. **App marchand** (en cours) : la caisse de gestion.
+2. **App client et carte des prix** : le client voit son crédit et trouve un produit près de chez lui.
+3. **Grossistes** : commandes, livraisons et stock du dépôt, sur le même socle.
+4. **Dashboard sponsor** : prix, ruptures et flux par région.
+5. **Grandes enseignes** : la même plateforme sur leur propre serveur.
+
+Le détail est dans la feuille de route « Feuille de route — Écosystème Shop Keeper ».
 
 ---
 
 ## Architecture
 
 ```
-┌──────────────────────────────┐          ┌──────────────────────────────┐
-│     shop-keeper-mobile       │          │     shop-keeper-backend      │
-│  Expo / React Native (TS)    │  REST    │  Laravel 13 (PHP 8.3)        │
-│                              │ ───────► │                              │
-│  UI ─► Redux Toolkit         │  (futur) │  Controllers ─► Services     │
-│        └► services/repos     │          │  Policies (RBAC) · Sanctum   │
-│            └► SQLite local   │          │  └► MySQL                    │
-│  journal pending_changes     │          │  autorité finale des données │
-└──────────────────────────────┘          └──────────────────────────────┘
+┌──────────────────────────────┐          ┌───────────────────────────────┐
+│     shop-keeper-mobile       │          │      shop-keeper-backend      │
+│  Expo / React Native (TS)    │  REST    │  Laravel 13 (PHP 8.3+)        │
+│                              │  /api/v1 │                               │
+│  UI ─► Redux Toolkit         │ ───────► │  Modules par domaine          │
+│        └► services/repos     │ ◄─────── │  Actions · Policies · Sanctum │
+│            └► SQLite local   │  sync    │  └► MySQL                     │
+│  journal pending_changes     │          │  autorité finale des données  │
+└──────────────────────────────┘          └───────────────────────────────┘
 ```
 
-- **Offline-first.** Toute action courante (ajouter un client, enregistrer une dette ou un paiement, consulter un solde) s'écrit d'abord en SQLite sur l'appareil. Elle est notée dans un journal `pending_changes` avec un UUID généré côté client.
-- **Le backend fait autorité.** Une fois la synchronisation en place, le serveur validera chaque opération et appliquera les permissions avant de l'accepter.
-- **Pour l'instant, tout reste local.** Les features 001 et 002 sont volontairement mono-boutique, mono-appareil et sans aucun envoi au serveur (exception prévue par la constitution).
+- **Offline-first.** Chaque action (vente, réception, crédit, paiement) s'écrit d'abord en SQLite et dans un journal d'opérations, avec un UUID généré par le téléphone.
+- **Synchronisation (à venir, spec 010).** Le téléphone envoie ses opérations, le serveur applique chacune une seule fois avec les mêmes règles que l'API, puis le téléphone récupère ce qui a changé.
+- **Catalogue commun.** Les produits tunisiens sont référencés une seule fois (`global_products`) ; chaque magasin n'ajoute que son prix et son stock (`shop_products`).
+- **Le backend fait autorité** sur la validation, les permissions et les données.
 
 ---
 
 ## Principes clés
 
-Ces règles viennent de la [constitution du projet](.specify/memory/constitution.md) et s'appliquent à toutes les features.
+Ces règles viennent de la [constitution du projet](.specify/memory/constitution.md) (version 2.0.0) et s'appliquent à toutes les features.
 
-- **Simplicité.** Gros boutons, textes courts, et 3 taps maximum pour une action courante.
-- **Arabe et français dès le départ**, avec RTL et LTR. Aucun texte en dur : tout passe par des fichiers JSON de traduction.
-- **L'argent en entiers.** Les montants sont stockés en **millimes** (1 TND = 1 000 millimes), jamais en `float`.
-- **Vie privée.** Les noms, numéros et dettes des clients restent privés à la boutique.
-- **Séparation stricte** entre mobile et backend : chaque application a ses propres dépendances, tests et configuration.
-- **Styles séparés de la logique.** NativeWind, et pas de `StyleSheet` ni de style inline dans les fichiers TSX.
+- **Simple pour tous.** Gros boutons, textes courts, 3 taps maximum pour une action courante, aucun matériel à acheter.
+- **Arabe et français dès le départ**, avec RTL et LTR. Aucun texte en dur ; l'API renvoie des codes d'erreur, l'app les traduit.
+- **L'argent en entiers**, dans l'unité mineure de la devise (TND : millimes), jamais en `float`.
+- **Rien n'est modifié après coup** pour l'argent et le stock : une correction est un nouvel enregistrement.
+- **Crédit client et moyen de paiement sont distincts** : une vente est réglée tout de suite ou mise à crédit, et chaque règlement a son moyen (espèces, chèque, carte, virement).
+- **Données.** Les données saisies appartiennent à la plateforme (conditions d'utilisation) ; un magasin ne voit que les siennes ; tout partage avec des tiers est anonymisé selon la loi.
+- **Une app indépendante par acteur**, qui ne parle aux autres qu'à travers l'API.
 
 ---
 
@@ -73,24 +80,28 @@ npx expo start          # puis « a » (Android), « i » (iOS) ou « w » (web)
 ```bash
 cd shop-keeper-backend
 composer install
-cp .env.example .env
+cp .env.example .env    # puis renseigner la base MySQL et les secrets
 php artisan key:generate
 php artisan migrate
 php artisan serve       # http://localhost:8000
 ```
 
-> Le backend n'est encore que le squelette Laravel par défaut, sans route métier. Le `.env.example` pointe sur SQLite ; la cible est MySQL.
+➡️ **[Voir le README du backend](./shop-keeper-backend/README.md)** pour les prérequis, la structure et les tests avec Postman.
 
 ---
 
 ## Développement piloté par les specs
 
-Chaque feature passe par [Spec Kit](https://github.com/github/spec-kit) : `specify` → `clarify` → `plan` → `tasks` → `implement`. Les skills correspondants sont dans `.github/skills/`.
+Chaque feature passe par [Spec Kit](https://github.com/github/spec-kit) : `specify` → `clarify` → `plan` → `tasks` → `analyze` → `implement`. Les skills sont dans `.github/skills/`, les règles pour l'agent dans [`CLAUDE.md`](CLAUDE.md) et [`shop-keeper-backend/CLAUDE.md`](shop-keeper-backend/CLAUDE.md).
 
-| Feature | Description | Avancement |
+| Feature | Description | État |
 |---|---|---|
-| [`001-kridi-credit-ledger`](specs/001-kridi-credit-ledger/spec.md) | Registre de crédit : produits, clients, tickets, paiements, soldes, hors ligne | Implémentée côté mobile (les cases de `tasks.md` ne sont pas cochées) |
-| [`002-ledger-usability-dashboard`](specs/002-ledger-usability-dashboard/spec.md) | Barre d'onglets, tableau de bord du jour, scan de code-barres, création inline dans un ticket | 29 / 33 tâches |
+| [`001-kridi-credit-ledger`](specs/001-kridi-credit-ledger/spec.md) | Produits, clients, tickets, crédit client, paiements, soldes, hors ligne | Clôturée |
+| [`002-ledger-usability-dashboard`](specs/002-ledger-usability-dashboard/spec.md) | Barre d'onglets, tableau de bord du jour, scan de code-barres, création inline | Clôturée |
+| [`003-ledger-visual-redesign`](specs/003-ledger-visual-redesign/spec.md) | Refonte visuelle de tous les écrans | Clôturée |
+| [`004-async-feedback`](specs/004-async-feedback/spec.md) | Services asynchrones, loader, toasts, squelettes, erreurs de champ | Clôturée |
+| [`005-dark-mode`](specs/005-dark-mode/spec.md) | Thème clair et sombre | Clôturée |
+| `006` | Authentification et magasin (backend seul, testable avec Postman) | Prochaine |
 
 Chaque dossier `specs/NNN-*/` contient `spec.md` (le quoi), `plan.md` (le comment), `tasks.md` (les étapes), `data-model.md`, `research.md`, `quickstart.md` et `contracts/`.
 
@@ -103,17 +114,21 @@ shop-keeper/
 ├── .github/skills/          # Commandes Spec Kit pour l'agent IA
 ├── .specify/                # Constitution, templates et scripts Spec Kit
 ├── specs/                   # Une spec par feature (001, 002, …)
-├── shop-keeper-mobile/      # Application Expo
+├── shop-keeper-mobile/      # App du commerçant (Expo)
 └── shop-keeper-backend/     # API Laravel
 ```
 
 ---
 
-## Feuille de route
+## Feuille de route de la phase 1
 
-- [x] Registre kridi local (001)
-- [ ] Ergonomie et tableau de bord (002) : 4 tâches restantes
-- [ ] Authentification (téléphone + PIN, Google) via Sanctum
-- [ ] API REST et synchronisation du journal `pending_changes`
-- [ ] Fournisseurs, achats et suivi des prix
-- [ ] Statistiques anonymisées avec consentement
+- [x] Socle du carnet : specs 001 à 005
+- [x] Pilote APK et pivot vers la caisse de gestion
+- [ ] 006 — Authentification et magasin (backend)
+- [ ] 007 — Stock, prix et catalogue commun
+- [ ] 008 — Ventes
+- [ ] 009 — Dashboard
+- [ ] 010 — App connectée et synchronisation
+- [ ] 011 — Employés
+- [ ] 012 — États de caisse
+- [ ] 013 à 015 — Tout petit commerce et Play Store
