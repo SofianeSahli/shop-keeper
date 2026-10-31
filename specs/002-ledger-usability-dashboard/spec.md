@@ -6,7 +6,7 @@
 
 **Updated**: 2026-10-14
 
-**Status**: Draft
+**Status**: Closed on 2026-10-31 (all tasks closed before the phase 1 backend)
 
 **Input**: User description: "Building on feature 001 (ledger: customers, products, tickets, payments), reorganize the app into a more usable experience:
 

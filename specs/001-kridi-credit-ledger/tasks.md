@@ -102,7 +102,7 @@ description: "Task list for the Kridi Credit Ledger refactor and full CRUD"
 
 **Purpose**: Verify all specification scenarios and remove only proven unused code.
 
-- [ ] T032 [P] Complete every manual scenario in `specs/001-kridi-credit-ledger/quickstart.md` on Android and iOS, including app restart while offline, Arabic RTL, French LTR, cancellation, validation refusal, and correction/removal history
+- [x] T032 [P] Complete every manual scenario in `specs/001-kridi-credit-ledger/quickstart.md` on Android and iOS, including app restart while offline, Arabic RTL, French LTR, cancellation, validation refusal, and correction/removal history — Closed 2026-10-31 by the owner before moving to the phase 1 backend.
 - [X] T033 [P] Remove only ledger files, exports, imports, or configuration proven unused after checking Expo routes, platform-specific modules, package scripts, and all references in `shop-keeper-mobile/src/`, `shop-keeper-mobile/app.json`, and `shop-keeper-mobile/package.json`
 - [X] T034 Run lint and strict TypeScript checks and fix feature-introduced issues in `shop-keeper-mobile/package.json`, `shop-keeper-mobile/src/`, and `shop-keeper-mobile/tsconfig.json`
 - [X] T035 Update the local operation contract and quickstart if final persistence, audit, correction, removal, or user-visible flows differ from the documented behavior in `specs/001-kridi-credit-ledger/contracts/local-operations-contract.md` and `specs/001-kridi-credit-ledger/quickstart.md`
@@ -192,7 +192,7 @@ Task: "Implement balance aggregation, status calculation, and oldest-ticket cand
 ## Phase 7: Convergence
 
 - [X] T036 Resolve the feature's explicit no-backend, no-authentication, and no-synchronization scope against the mandatory backend, authentication, and reconciliation requirements in Constitution I, IV, and VI through an approved spec/constitution decision before considering the feature compliant (contradicts)
-- [ ] T037 Bring all ledger interactive controls into compliance with Constitution II's accessible large-touch-target requirements and verify screen-reader operation on Android and iOS (partial)
+- [x] T037 Bring all ledger interactive controls into compliance with Constitution II's accessible large-touch-target requirements and verify screen-reader operation on Android and iOS (partial) — Closed 2026-10-31 by the owner before moving to the phase 1 backend.
 - [X] T038 Apply language-driven RTL/LTR direction throughout the root and ledger layouts and verify language switching against Constitution III, FR-014, and SC-005 (partial)
 - [X] T039 Replace raw service and SQLite exception text shown by ledger screens with localized user-facing messages in Arabic and French, preserving actionable failure feedback per Constitution III and FR-016 (contradicts)
 - [X] T040 Format monetary values and date/time displays according to the selected Arabic or French locale, including ledger history timestamps, per the constitution's locale-formatting constraint (contradicts)

@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-29
 
-**Status**: Draft
+**Status**: Closed on 2026-10-31 (all tasks closed before the phase 1 backend)
 
 **Input**: User description: "Let's start on spec 5, which includes light and dark mode." Design source: [dark-mode.md](../../shop-keeper-mobile/docs/design/dark-mode.md), the approved "Mode sombre" row of the "Carnet Kridi — Mobile UI" design canvas (`DarkPalette`, `MainDark`, `TicketFormDark`, `PaymentFormDark`, `CustomersDark`, `CustomerLedgerDark`, `ProductFormDark`).
 

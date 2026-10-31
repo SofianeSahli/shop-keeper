@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-10
 
-**Status**: Draft
+**Status**: Closed on 2026-10-31 (all tasks closed before the phase 1 backend)
 
 **Input**: User description: "Build a kridi (credit ledger) feature for small grocery shop owners in Tunisia, with a simple product catalog and barcode scanning. The owner can maintain products, add customers with optional real identity, create customer tickets from scanned or manually selected products, record ticket/customer payments, and view balances and highest debts. It must work offline, support Arabic and French with RTL, use integer millimes, keep customer data private, and keep common actions within three taps. Uploading local changes is out of scope; accounts/login, backend sync, stock, purchase prices, reminders, and dashboards are also out of scope. Include hypotheses to validate about partial payments, ticket/customer tracking, barcode coverage, and pseudonymous customer labels."
 

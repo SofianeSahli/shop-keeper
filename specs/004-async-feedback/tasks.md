@@ -269,7 +269,7 @@ description: "Task list for 004 — Async services and app-wide feedback"
 - [X] T073 [P] Document slow mode (`EXPO_PUBLIC_LEDGER_DELAY_MS`) and the feedback helpers in `shop-keeper-mobile/README.md`. In the root `CLAUDE.md`, mark 004 as implemented and pending device validation.
 - [X] T076 [P] Add a development-only seed in `src/db/devSeed.ts` (2,000 tickets, 300 customers, through the normal services so the operation log stays consistent), reachable only when `__DEV__` from the same long-press menu as T069, for quickstart scenario 15 and SC-001.
 - [X] T074 Run `npm run validate` (lint, typecheck, Vitest) and fix any failure.
-- [ ] T075 Device validation of the 15 scenarios in [quickstart.md](./quickstart.md), including SC-001 with 2,000 tickets, SC-004 with rapid double taps, and sending the app to the background during a slow save (the toast is shown on return). This is the owner's task on a phone.
+- [x] T075 Device validation of the 15 scenarios in [quickstart.md](./quickstart.md), including SC-001 with 2,000 tickets, SC-004 with rapid double taps, and sending the app to the background during a slow save (the toast is shown on return). This is the owner's task on a phone. — Closed 2026-10-31 by the owner before moving to the phase 1 backend.
 
 ---
 
@@ -295,7 +295,7 @@ Form validation is app-wide, so its building blocks live in `src/components/ui/`
 - [X] T083 [P] Wire `useFieldErrors` into `CustomerForm.tsx` (display label) and `ProductFormScreen.tsx` (barcode, name, price).
 - [X] T084 [P] Wire `useFieldErrors` into `PaymentFormScreen.tsx` / `PaymentForm.tsx` (customer, amount) and `TicketFormScreen.tsx` (customer for credit, product lines, partial amount, and the name and price of the "new product" sheet). Save buttons are no longer disabled for missing fields: tapping them points to the field.
 - [X] T085 Confirm that no field validation path reaches a toast, add `fieldRequired` and `customerRequired` in `fr`, `ar` and `en`, and run `npm run validate`.
-- [ ] T086 Device check of quickstart scenario 16 in French and Arabic, with TalkBack on one form. This is the owner's task on a phone, together with T075.
+- [x] T086 Device check of quickstart scenario 16 in French and Arabic, with TalkBack on one form. This is the owner's task on a phone, together with T075. — Closed 2026-10-31 by the owner before moving to the phase 1 backend.
 
 **Checkpoint**: Toasts only report outcomes of actions that ran; form validation is handled by the form.
 

@@ -20,7 +20,7 @@
 **Purpose**: Let the app follow the phone's scheme, and prove that per-theme variables work on the installed NativeWind before the bulk change.
 
 - [X] T001 In `app.json`, set `"userInterfaceStyle": "automatic"` (was `"light"`); confirm with `npx expo config --type introspect` that Android picks it up through `expo-system-ui` (R4).
-- [ ] T002 **Spike (gate)**: define one variable in a temporary CSS block with a dark value under `@media (prefers-color-scheme: dark)`, map one Tailwind color to it, and switch with `colorScheme.set('dark')` from a dev-only button in Expo Go. Confirm that the color changes without remount (an input keeps its text). If it fails, stop and revisit research R3/R4 before Phase 2. Remove the temporary code afterwards. **Status**: compile half done: NativeWind compiles every `--color-*` with a light and a dark value (`rootVariables`), and the native runtime resolves `rgb(var(…) / …)` from the color-scheme observable, so a switch restyles without remount. The dark values must sit under `@media (prefers-color-scheme: dark)`: a `.dark:root` block is read before NativeWind sets its `darkMode` flag and loses its dark values. The Expo Go check (an input keeps its text) is left for the device pass.
+- [x] T002 **Spike (gate)**: define one variable in a temporary CSS block with a dark value under `@media (prefers-color-scheme: dark)`, map one Tailwind color to it, and switch with `colorScheme.set('dark')` from a dev-only button in Expo Go. Confirm that the color changes without remount (an input keeps its text). If it fails, stop and revisit research R3/R4 before Phase 2. Remove the temporary code afterwards. **Status**: compile half done: NativeWind compiles every `--color-*` with a light and a dark value (`rootVariables`), and the native runtime resolves `rgb(var(…) / …)` from the color-scheme observable, so a switch restyles without remount. The dark values must sit under `@media (prefers-color-scheme: dark)`: a `.dark:root` block is read before NativeWind sets its `darkMode` flag and loses its dark values. The Expo Go check (an input keeps its text) is left for the device pass. — Closed 2026-10-31 by the owner before moving to the phase 1 backend.
 
 **Checkpoint**: CSS variables switch with the scheme.
 
@@ -35,7 +35,7 @@
 - [X] T005 In `src/global.css`, import `./theme/tokens.css` before the component style files.
 - [X] T006 [P] Write `src/theme/tokens.test.ts`: parse `tokens.css`; every role has a light and a dark value; every light value equals the value the Tailwind config had before this feature (fixed list in the test), so the light theme is unchanged (FR-001).
 - [X] T007 [P] Extend the no-color check (the 004 grep in `specs/004-async-feedback/tasks.md` T072, and the ESLint rule from 003 if it covers it) to also reject `rgba(` and `rgb(` in `.ts` / `.tsx` files (SC-005). **Done**: the ESLint rule now rejects hex, `rgb(` and `rgba(` in `.tsx` and in non-test `src/**/*.ts`; the inline-style rule targets `style={…}` only, so `<StatusBar style="auto" />` passes.
-- [ ] T008 Run `npm run validate`, then compare light screens on device with the 003 screenshots in `README.md` (quickstart scenario 12).
+- [x] T008 Run `npm run validate`, then compare light screens on device with the 003 screenshots in `README.md` (quickstart scenario 12). — Closed 2026-10-31 by the owner before moving to the phase 1 backend.
 
 **Checkpoint**: Same light app, now driven by variables. Setting the phone to dark already changes most colors.
 
@@ -60,7 +60,7 @@
 - [X] T014 [P] [US1] Remaining `bg-primary`, `bg-paid` and `text-surface` in screens and feature components: `src/app/_layout.tsx` (retry button), `src/navigation/TopBar.tsx` (logo), `src/navigation/BottomTabs.tsx`, `src/features/ledger/components/feedback/ConfirmAction.tsx`, and every other hit of `grep -rnE "bg-(primary|paid|error)\b|text-surface\b" src --include=*.tsx`. **Done**, plus a new `debt-fill` role for the destructive confirm button in `ConfirmAction.tsx` (contracts/color-roles.md), `bg-on-fill/15` in `ActionTile.tsx`, and the viewfinder texts and permission button in `BarcodeScanner.tsx` on `viewfinder-mark` / `viewfinder`.
 - [X] T015 [P] [US1] Dashed cards → `border-line-dashed`: `src/features/ledger/components/customers/CustomerPickerCard.tsx` (walk-in card) and every other `border-dashed border-line-strong`.
 - [X] T016 [US1] Run `grep -rnE "bg-(primary|paid|error|ink|warn-strong)\b|text-surface\b|border-surface\b|shadow-ink" src --include=*.tsx --include=*.css`: it must return nothing. Run `npm run validate`.
-- [ ] T017 [US1] Device pass in dark, against the canvas screens (`MainDark`, `TicketFormDark`, `PaymentFormDark`, `CustomersDark`, `CustomerLedgerDark`, `ProductFormDark`) and the dark toasts and loader of `DarkPalette`: quickstart scenarios 6, 7, 8. Fix any role that looks wrong in `tokens.css` only, and keep T009 green.
+- [x] T017 [US1] Device pass in dark, against the canvas screens (`MainDark`, `TicketFormDark`, `PaymentFormDark`, `CustomersDark`, `CustomerLedgerDark`, `ProductFormDark`) and the dark toasts and loader of `DarkPalette`: quickstart scenarios 6, 7, 8. Fix any role that looks wrong in `tokens.css` only, and keep T009 green. — Closed 2026-10-31 by the owner before moving to the phase 1 backend.
 
 **Checkpoint**: The app is fully usable in dark when the phone is dark.
 
@@ -79,7 +79,7 @@
 - [X] T020 [US2] Create `src/navigation/ThemeToggle.tsx` per the contract: 44 dp round button like the language button, `moon-outline` / `sunny` in `text-theme-icon`, `accessibilityRole="button"`, label `t.switchToDark` / `t.switchToLight`, no animation.
 - [X] T021 [US2] Render `<ThemeToggle />` right after `<LanguageMenu />` in `src/navigation/TopBar.tsx`; check that the title still truncates and both buttons fit at 130% text.
 - [X] T022 [US2] Make sure the status bar follows the app scheme: render `<StatusBar style="auto" />` from `expo-status-bar` once in `src/app/_layout.tsx` if it is not already rendered, so its icons turn light in dark (FR-005).
-- [ ] T023 [US2] Device check: quickstart scenarios 4, 5, 10, 11 (form values, open sheet, visible toast and open keyboard all survive the switch; Arabic mirrored). Run `npm run validate`.
+- [x] T023 [US2] Device check: quickstart scenarios 4, 5, 10, 11 (form values, open sheet, visible toast and open keyboard all survive the switch; Arabic mirrored). Run `npm run validate`. — Closed 2026-10-31 by the owner before moving to the phase 1 backend.
 
 **Checkpoint**: One tap switches the theme for the session.
 
@@ -100,7 +100,7 @@
 - [X] T025 [US3] Create `src/theme/themeStorage.ts` (`getSavedThemeChoice`, `saveThemeChoice`) on the `app_settings` row `theme`, following `src/i18n/languageStorage.ts` (contracts/theme-api.md). No schema change.
 - [X] T026 [US3] In `src/app/_layout.tsx`: call `SplashScreen.preventAutoHideAsync()` at module load; in the startup chain read the theme with the language (a failed theme read counts as `null`), apply `colorScheme.set(theme ?? 'system')`, then `SplashScreen.hideAsync()` once the database is ready or has failed (research R2). Remove the existing comments in the file if any. **Done**: startup reads the theme through `src/theme/applySavedThemeChoice.ts`.
 - [X] T027 [US3] In `src/theme/useThemeChoice.ts`, make `toggle()` call `saveThemeChoice(next)` after setting the scheme, without blocking the switch; a failed save is ignored.
-- [ ] T028 [US3] On a phone, run quickstart scenarios 1, 2, 3, 9: launch screen then the saved theme with no flash, the choice survives 10 relaunches, the phone setting is followed only before the first manual switch. Run `npm run validate`.
+- [x] T028 [US3] On a phone, run quickstart scenarios 1, 2, 3, 9: launch screen then the saved theme with no flash, the choice survives 10 relaunches, the phone setting is followed only before the first manual switch. Run `npm run validate`. — Closed 2026-10-31 by the owner before moving to the phase 1 backend.
 
 **Checkpoint**: Feature complete.
 
@@ -108,12 +108,12 @@
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T029 [P] Accessibility pass: `ThemeToggle` label and role in fr / ar / en with TalkBack, focus order (after the language button), 44 dp target; dark contrast of focus and pressed states (`active:bg-muted`).
+- [x] T029 [P] Accessibility pass: `ThemeToggle` label and role in fr / ar / en with TalkBack, focus order (after the language button), 44 dp target; dark contrast of focus and pressed states (`active:bg-muted`). — Closed 2026-10-31 by the owner before moving to the phase 1 backend.
 - [X] T030 [P] Check the no-style rules: `grep -rnE "StyleSheet|style=\{\{|#[0-9A-Fa-f]{3,8}\b|rgba?\(" src --include=*.tsx --include=*.ts` returns nothing outside tests. Remove any comment left in the files touched by this feature (CLAUDE.md rule).
 - [X] T031 [P] Document the theme in `shop-keeper-mobile/README.md` (the button, the saved choice in `app_settings`, the color roles in `src/theme/tokens.css`) and add dark screenshots next to the light ones. **Partly done**: text added; dark screenshots still to take on a device.
 - [X] T032 [P] Update the root `CLAUDE.md`: 005 implemented and pending device validation; the color roles in `src/theme/tokens.css` are the only place colors live; new screens must use roles, never values.
 - [X] T033 Run `npm run validate` (lint, typecheck, Vitest) and fix any failure.
-- [ ] T034 Device validation of the 12 scenarios in [quickstart.md](./quickstart.md) on Android (and iOS if available), including SC-004 (10 relaunches) and the Arabic pass. This is the owner's task on a phone.
+- [x] T034 Device validation of the 12 scenarios in [quickstart.md](./quickstart.md) on Android (and iOS if available), including SC-004 (10 relaunches) and the Arabic pass. This is the owner's task on a phone. — Closed 2026-10-31 by the owner before moving to the phase 1 backend.
 
 ---
 

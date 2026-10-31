@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-27
 
-**Status**: Draft
+**Status**: Closed on 2026-10-31 (all tasks closed before the phase 1 backend)
 
 **Input**: User description: "Start spec 004: we need loaders; follow the approved design." Design source: [async-feedback.md](../../shop-keeper-mobile/docs/design/async-feedback.md), the approved "Retours d'état — toasts et chargement" row of the "Carnet Kridi — Mobile UI" design canvas (`FeedbackKit`, `FeedbackFlow`).
 
