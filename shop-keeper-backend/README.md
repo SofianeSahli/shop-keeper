@@ -14,7 +14,9 @@ API REST Laravel de l'écosystème Shop Keeper. Elle sert d'abord l'app du comme
 |---|---|
 | Framework | Laravel 13 |
 | Langage | PHP 8.3+ (au minimum 8.3.36, 8.4.27 ou 8.5.12, les versions qui corrigent CVE-2026-109618 et CVE-2026-109619) |
-| Base de données | MySQL 8 (SQLite seulement pour les tests locaux) |
+| Base de données | MySQL 8, tests compris (base `shop_keeper_test`) |
+| Cache, limites, file d'attente | Redis |
+| Environnement | Docker Compose : PHP-FPM, Nginx, worker de file, MySQL, Redis, Mailpit |
 | Authentification | Laravel Sanctum, un jeton par appareil, connexion par téléphone + PIN |
 | Tests | Pest |
 | Qualité | Pint |
@@ -23,27 +25,28 @@ API REST Laravel de l'écosystème Shop Keeper. Elle sert d'abord l'app du comme
 
 ## Démarrer
 
-**Prérequis :** PHP (version corrigée, voir ci-dessus), Composer, MySQL 8.
+**Prérequis :** Docker et Docker Compose. PHP, Composer, MySQL et Redis ne sont pas nécessaires sur la machine.
 
 ```bash
-php -v                   # vérifier la version de PHP
-composer install
-cp .env.example .env     # renseigner la base MySQL et les secrets laissés vides
-php artisan key:generate
-php artisan migrate
-php artisan serve        # http://localhost:8000
+cp .env.example .env     # renseigner DB_PASSWORD et DB_ROOT_PASSWORD
+docker compose up -d --build
 ```
 
-Pour déployer : même chose sur le serveur, avec ses propres valeurs dans `.env`. Toute la configuration passe par `.env` ; aucun hébergeur n'est encore choisi.
+Le service `setup` installe les paquets, crée `APP_KEY` et applique les migrations à chaque démarrage. L'API répond sur http://localhost:8000 et Mailpit, qui reçoit les e-mails envoyés en local, sur http://localhost:8025.
+
+Toute la configuration passe par `.env` ; aucun hébergeur n'est encore choisi. Ce `compose.yaml` sert au développement.
 
 ### Commandes
 
 | Commande | Effet |
 |---|---|
-| `php artisan serve` | Lance l'API en local |
-| `php artisan test` | Lance les tests |
-| `vendor/bin/pint` | Formate le code, à lancer avant chaque commit |
-| `php artisan migrate` | Applique les migrations |
+| `docker compose up -d` | Lance l'API et ses services |
+| `docker compose down` | Arrête tout, les données restent dans les volumes |
+| `docker compose logs -f app queue` | Suit les logs |
+| `docker compose exec app php artisan test` | Lance les tests |
+| `docker compose exec app vendor/bin/pint` | Formate le code, à lancer avant chaque commit |
+| `docker compose exec app php artisan migrate` | Applique les migrations |
+| `docker compose exec app composer require <paquet>` | Ajoute un paquet |
 
 ---
 
