@@ -52,7 +52,8 @@ Laravel API for the Shop Keeper ecosystem. It serves the merchant app (`shop-kee
 
 ## Stack
 
-- Laravel 13, PHP 8.3+, MySQL 8 (target database; SQLite only for local tests), Laravel Sanctum for API tokens.
+- Laravel 13, PHP 8.3+, MySQL 8 (every environment, tests included; tests use the `shop_keeper_test` database), Redis (cache, rate limits, queue), Laravel Sanctum for API tokens.
+- Everything runs in Docker through `compose.yaml`. Run PHP, Composer and Artisan inside the containers (`docker compose exec app <command>`), not on the host. Any new backend service goes in `compose.yaml`.
 - PHP must be a release that fixes CVE-2026-109618 and CVE-2026-109619: at least 8.3.36, 8.4.27 or 8.5.12. Check `php -v` locally and on every server before deploying, and restart queue workers and other long-running PHP processes after a PHP update.
 - Keep PHP on a supported branch; never deploy on 8.2 or older.
 - Install packages with `composer require`; do not add a package without saying why in the PR.
@@ -70,7 +71,7 @@ Laravel API for the Shop Keeper ecosystem. It serves the merchant app (`shop-kee
 - Controllers stay thin: validate with a Form Request, authorize with a policy, call one action, return a JSON resource.
 - Business rules live in action classes, one public method each (`RecordSale::handle(...)`). Anything that writes several tables runs in a database transaction inside the action.
 - Code explains itself: clear names, small functions, named constants instead of magic values. Do not write comments; rename or extract instead.
-- Run `vendor/bin/pint` before committing.
+- Run `docker compose exec app vendor/bin/pint` before committing.
 
 ## Data
 
@@ -115,12 +116,12 @@ Laravel API for the Shop Keeper ecosystem. It serves the merchant app (`shop-kee
 
 - Every endpoint has feature tests for the success case, validation errors, unauthenticated access, and access to another shop's data.
 - Every action with a business rule has tests for that rule.
-- `php artisan test` and Pint must pass before a task is done.
+- `docker compose exec app php artisan test` and `docker compose exec app vendor/bin/pint` must pass before a task is done.
 
 ## Security
 
 - Secrets and environment values stay in `.env`, never in code or git.
-- `.env.example` mirrors `.env`: the same keys in the same order, with safe values. Non-secret settings get working defaults (local MySQL database `shop_keeper`, `APP_ENV=local`); secrets (`APP_KEY`, passwords, tokens) are left empty. Deploying is: copy `.env.example` to `.env`, fill the empty secrets, run `php artisan key:generate`.
+- `.env.example` mirrors `.env`: the same keys in the same order, with safe values. Non-secret settings get working defaults for the Docker services (MySQL database `shop_keeper`, `APP_ENV=local`); secrets (`APP_KEY`, passwords, tokens) are left empty. Starting is: copy `.env.example` to `.env`, fill `DB_PASSWORD` and `DB_ROOT_PASSWORD`, run `docker compose up -d --build`; the `setup` service installs packages, creates `APP_KEY` and runs migrations.
 - A key added to `.env` is added to `.env.example` in the same commit.
 - Store only hashes of PINs and invitation tokens.
 - Log no personal data (names, phone numbers, PINs, tokens).
