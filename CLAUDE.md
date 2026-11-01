@@ -5,15 +5,15 @@ Monorepo for a Tunisian small-shop ecosystem: a management app for small indepen
 - `shop-keeper-mobile/` — Expo + React Native + TypeScript + NativeWind + Redux Toolkit + expo-sqlite. Read `shop-keeper-mobile/AGENTS.md` first (Expo version rules, commands).
 - `shop-keeper-backend/` — Laravel 13 REST API, phase 1 backend in progress. **Before any change in this folder, read `shop-keeper-backend/CLAUDE.md`**: it holds the backend rules (modules, actions, data, API, sync, catalog, security, tests). Mobile rules in this file do not apply there.
 - `specs/` — Spec Kit features. `001` to `005` (credit ledger, dashboard, visual redesign, async feedback, dark mode) are closed (2026-10-31). The next spec is `006`.
-- `.specify/memory/constitution.md` — governing rules (version 2.0.0). Read it before any change.
+- `.specify/memory/constitution.md` — governing rules (version 3.0.0). Read it before any change.
 
 ## Current focus
 
 **Phase 1 backend — spec 006: authentication and shop.** Backend only; no mobile change in this spec.
 
-- Scope: merchant account by phone number + PIN (Laravel Sanctum, one token per device, rate limited), creation and reading of the merchant's shop, versioned REST API under `/api/v1`, consistent JSON errors with stable codes, MySQL, feature tests including cross-shop isolation.
+- Scope: merchant account by Google sign-in or email and password, with an optional PIN as second factor (Laravel Sanctum, one token per device, rate limited), creation and reading of the merchant's shop, versioned REST API under `/api/v1`, consistent JSON errors with stable codes, MySQL, feature tests including cross-shop isolation.
 - The API must be usable from Postman: ship a Postman collection (or an OpenAPI file Postman can import) with the spec, and keep it in sync with the endpoints.
-- Out of scope for 006: products and the shared catalog, stock, sales, customer credit, dashboard, sync endpoints, employees, cash shifts, Google login, any mobile screen. They come in later specs, in the roadmap order.
+- Out of scope for 006: products and the shared catalog, stock, sales, customer credit, dashboard, sync endpoints, employees, cash shifts, any mobile screen. They come in later specs, in the roadmap order.
 - Follow `shop-keeper-backend/CLAUDE.md` for every backend file, and the Spec Kit flow in `.github/skills/` (`speckit-specify` → `speckit-clarify` → `speckit-plan` → `speckit-tasks` → `speckit-analyze` → `speckit-implement`). Helper scripts are PowerShell (`.specify/scripts/powershell/`).
 
 ## Mobile app state (for later specs)

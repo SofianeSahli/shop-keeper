@@ -1,0 +1,541 @@
+{
+  "info": {
+    "name": "Shop Keeper 006 - Merchant account and shop",
+    "description": "Runs the whole journey in order against a local backend with AUTH_TEST_MODE=true. Set base_url, then run the collection; nothing needs editing. `test:<email>` stands in for Google and `000000` for every emailed code. Each run generates its own addresses and devices.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000", "type": "string" },
+    { "key": "terms_version", "value": "2026-11", "type": "string" },
+    { "key": "email_code", "value": "000000", "type": "string" },
+    { "key": "password", "value": "first journey password", "type": "string" },
+    { "key": "new_password", "value": "second journey password", "type": "string" },
+    { "key": "pin", "value": "483920", "type": "string" },
+    { "key": "new_pin", "value": "507213", "type": "string" },
+    { "key": "recovered_pin", "value": "618204", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Google account",
+      "item": [
+        {
+          "name": "First Google sign-in",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const runId = Date.now();",
+                  "pm.collectionVariables.set('google_email', `google.${runId}@gmail.com`);",
+                  "pm.collectionVariables.set('email', `merchant.${runId}@example.com`);",
+                  "pm.collectionVariables.set('device_id', pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.collectionVariables.set('new_device_id', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('signed in', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.status).to.eql('signed_in');",
+                  "});",
+                  "pm.collectionVariables.set('token', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_token\": \"test:{{google_email}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"terms_version\": \"{{terms_version}}\",\n  \"phone\": \"+216 20 123 456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/google",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "google"]
+            }
+          }
+        },
+        {
+          "name": "Read the account, no shop yet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('account with no shop', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.shop).to.eql(null);",
+                  "  pm.expect(pm.response.json().data.phone).to.eql('+21620123456');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "me"]
+            }
+          }
+        },
+        {
+          "name": "Sign out of this device",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('signed out', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Email account and shop",
+      "item": [
+        {
+          "name": "Sign up with email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('code sent', () => pm.response.to.have.status(202));"]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Amira\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"terms_version\": \"{{terms_version}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/email/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "email", "register"]
+            }
+          }
+        },
+        {
+          "name": "Ask for a new code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('code sent', () => pm.response.to.have.status(202));"]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\"\n}" },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/email/resend",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "email", "resend"]
+            }
+          }
+        },
+        {
+          "name": "Confirm the address",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('signed in', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.status).to.eql('signed_in');",
+                  "});",
+                  "pm.collectionVariables.set('token', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"code\": \"{{email_code}}\",\n  \"device_id\": \"{{device_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/email/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "email", "confirm"]
+            }
+          }
+        },
+        {
+          "name": "Create the shop",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('shop created in dinars', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().data.currency).to.eql('TND');",
+                  "});",
+                  "pm.collectionVariables.set('shop_id', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Epicerie Amira\",\n  \"business_type\": \"grocery\",\n  \"city\": \"Sousse\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/shops",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "shops"]
+            }
+          }
+        },
+        {
+          "name": "Read the shop",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('own shop returned', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.id).to.eql(Number(pm.collectionVariables.get('shop_id')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shops/{{shop_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "shops", "{{shop_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Password reset",
+      "item": [
+        {
+          "name": "Forgot the password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('code sent', () => pm.response.to.have.status(202));"]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\"\n}" },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/password/forgot",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "password", "forgot"]
+            }
+          }
+        },
+        {
+          "name": "Reset the password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('password changed', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"code\": \"{{email_code}}\",\n  \"password\": \"{{new_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/password/reset",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "password", "reset"]
+            }
+          }
+        },
+        {
+          "name": "Sign in with the new password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('signed in', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.status).to.eql('signed_in');",
+                  "});",
+                  "pm.collectionVariables.set('token', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{new_password}}\",\n  \"device_id\": \"{{device_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/email/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "email", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. PIN",
+      "item": [
+        {
+          "name": "Turn on a PIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('PIN on', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"pin\": \"{{pin}}\"\n}" },
+            "url": {
+              "raw": "{{base_url}}/api/v1/me/pin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "me", "pin"]
+            }
+          }
+        },
+        {
+          "name": "Change the PIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('PIN changed', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_pin\": \"{{pin}}\",\n  \"pin\": \"{{new_pin}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/me/pin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "me", "pin"]
+            }
+          }
+        },
+        {
+          "name": "Sign in on a new device, PIN needed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('held for the PIN, no session', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.status).to.eql('pin_required');",
+                  "  pm.expect(pm.response.json().data).to.not.have.property('token');",
+                  "});",
+                  "pm.collectionVariables.set('pending_sign_in', pm.response.json().data.pending_sign_in);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{new_password}}\",\n  \"device_id\": \"{{new_device_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/email/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "email", "login"]
+            }
+          }
+        },
+        {
+          "name": "Send the PIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('signed in', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.status).to.eql('signed_in');",
+                  "});",
+                  "pm.collectionVariables.set('token', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pending_sign_in\": \"{{pending_sign_in}}\",\n  \"pin\": \"{{new_pin}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/pin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "pin"]
+            }
+          }
+        },
+        {
+          "name": "Recover a forgotten PIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('new PIN set', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pin\": \"{{recovered_pin}}\",\n  \"password\": \"{{new_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/me/pin/recovery",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "me", "pin", "recovery"]
+            }
+          }
+        },
+        {
+          "name": "Turn off the PIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('PIN off', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"current_pin\": \"{{recovered_pin}}\"\n}" },
+            "url": {
+              "raw": "{{base_url}}/api/v1/me/pin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "me", "pin"]
+            }
+          }
+        },
+        {
+          "name": "Read the account with its shop",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('account with its shop and no PIN', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.pin_enabled).to.eql(false);",
+                  "  pm.expect(pm.response.json().data.shop.id).to.eql(Number(pm.collectionVariables.get('shop_id')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "me"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

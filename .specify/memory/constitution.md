@@ -1,11 +1,12 @@
 <!--
 Sync Impact Report
-- Version change: 1.5.0 -> 2.0.0
-- Reason: alignment with the product roadmap of 2026-10-31 (pivot from a local credit ledger to a small-business management app with a Laravel backend).
-- Modified principles: I. Monorepo (one independent app per actor); VI. Offline-First (operation-log sync with the backend; the local-only exception ends).
-- Added principles: VII. Product Scope: Small-Business Management; VIII. Data Ownership and Privacy.
-- Modified constraints: money in minor units of the shop currency; "kridi" renamed "customer credit"; customer credit is distinct from the payment method; phone + PIN required, Google login optional for a later feature; shared product catalog; append-only money and stock records; hosting-agnostic deployment.
-- Removed sections: Approved Local-Only Feature Exception (replaced by a closing note in VI).
+- Version change: 2.0.0 -> 3.0.0
+- Reason: owner decision of 2026-11-01 for spec 006: Google sign-in and email with password replace phone number plus PIN as the login, because a forgotten PIN had no recovery path and not every shopkeeper has a Google account.
+- Modified principles: none.
+- Modified constraints: authentication is Google sign-in or email with password, with Sanctum tokens; the PIN becomes an optional second factor; the email/password ban is removed.
+- Added sections: none.
+- Removed sections: none.
+- Dependent files updated: root CLAUDE.md, shop-keeper-backend/CLAUDE.md, shop-keeper-backend/README.md.
 - Follow-up TODOs: legal review of data collection and anonymization (INPDP) before any third-party sharing; who verifies pending global products; hosting choice.
 -->
 
@@ -70,7 +71,7 @@ All data entered in the apps belongs to the platform operator, as stated in the 
 - Records that carry money or stock (sales, payments, customer credit entries, stock movements) MUST NOT be updated or deleted; a correction is a new record.
 - Products MUST be split between a shared catalog of products (`global_products`: barcode, name, brand, format, no price) and each shop's own products (`shop_products`: prices, stock, optional link to the shared catalog).
 - The feature formerly called "kridi" is named "customer credit" in code, API and documentation; the local word MAY be used in Arabic translations and dialect marketing.
-- Authentication MUST use phone number plus PIN through Laravel Sanctum, with rate limiting, and PINs MUST be stored only as hashes. Google login MAY be added in a later feature. Phone-number OTP MAY be added when its operating cost is viable. Email/password authentication MUST NOT be used.
+- Authentication MUST use Google sign-in or a verified email address with a password, with Laravel Sanctum issuing the API tokens and with rate limiting. A merchant MAY turn on a numeric PIN as a second factor. Passwords and PINs MUST be stored only as hashes. Phone-number OTP MAY be added when its operating cost is viable.
 - Common shopkeeper actions MUST take three taps or fewer.
 - CSS and style declarations MUST be kept in dedicated styling files, separate from TypeScript and TSX component logic. UI work MUST favor clean, reusable components and MUST cover relevant non-happy-path states.
 - Sensitive configuration MUST be excluded from version control and secure handling MUST be used for tokens, credentials, and environment settings. Every app MUST stay deployable on any host: configuration only through environment files, no provider-specific code, and no hard-coded app name, API URL or colors outside configuration.
@@ -96,4 +97,4 @@ Amendments MUST be documented in the constitution, versioned using semantic vers
 
 All work in the repository MUST be checked against this constitution during planning, implementation, and review. If a feature violates a mandatory requirement, the work MUST be corrected before it is considered complete. Maintainers MUST preserve a durable architectural record of significant decisions and deviations that are intentionally allowed.
 
-**Version**: 2.0.0 | **Ratified**: 2026-10-10 | **Last Amended**: 2026-10-31
+**Version**: 3.0.0 | **Ratified**: 2026-10-10 | **Last Amended**: 2026-11-01

@@ -11,6 +11,9 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <testsuite name="Modules">
+            <directory>app/Modules/*/Tests</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
@@ -32,5 +35,8 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="AUTH_TEST_MODE" value="false" force="true"/>
+        <env name="GOOGLE_CLIENT_IDS" value="shop-keeper-test-client" force="true"/>
+        <env name="TERMS_VERSION" value="2026-11" force="true"/>
     </php>
 </phpunit>
