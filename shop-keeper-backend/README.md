@@ -16,7 +16,7 @@ API REST Laravel de l'écosystème Shop Keeper. Elle sert d'abord l'app du comme
 | Langage | PHP 8.3+ (au minimum 8.3.36, 8.4.27 ou 8.5.12, les versions qui corrigent CVE-2026-109618 et CVE-2026-109619) |
 | Base de données | MySQL 8, tests compris (base `shop_keeper_test`) |
 | Cache, limites, file d'attente | Redis |
-| Environnement | Docker Compose : PHP-FPM, Nginx, worker de file, MySQL, Redis, Mailpit |
+| Environnement | Docker Compose : PHP-FPM, Nginx, worker de file, MySQL, Redis, Mailpit, phpMyAdmin |
 | Authentification | Laravel Sanctum, un jeton par appareil, connexion Google ou e-mail et mot de passe, vérification en deux étapes optionnelle : un nouveau code à 6 chiffres envoyé par e-mail à chaque connexion |
 | Tests | Pest |
 | Qualité | Pint |
@@ -32,7 +32,7 @@ cp .env.example .env     # renseigner DB_PASSWORD et DB_ROOT_PASSWORD
 docker compose up -d --build
 ```
 
-Le service `setup` installe les paquets, crée `APP_KEY` et applique les migrations à chaque démarrage. L'API répond sur http://localhost:8000 et Mailpit, qui reçoit les e-mails envoyés en local, sur http://localhost:8025.
+Le service `setup` installe les paquets, crée `APP_KEY` et applique les migrations à chaque démarrage. L'API répond sur http://localhost:8000 et Mailpit, qui reçoit les e-mails envoyés en local, sur http://localhost:8025. phpMyAdmin, pour consulter la base, répond sur http://localhost:8080 avec `DB_USERNAME` et `DB_PASSWORD` de `.env`.
 
 Toute la configuration passe par `.env` ; aucun hébergeur n'est encore choisi. Ce `compose.yaml` sert au développement.
 
