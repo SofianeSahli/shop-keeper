@@ -4,7 +4,7 @@ API REST Laravel de l'écosystème Shop Keeper. Elle sert d'abord l'app du comme
 
 ← Retour au [README principal](../README.md)
 
-> **État : phase 1 en cours.** Le projet est encore le squelette Laravel. La première spec, **006 — Authentification et magasin**, ajoute le compte du patron (téléphone + PIN) et la création de son magasin, testables avec Postman.
+> **État : phase 1 en cours.** La spec **006 — Authentification et magasin** est livrée : compte du patron (connexion Google ou e-mail, vérification en deux étapes optionnelle par code envoyé par e-mail) et création de son magasin, testables avec Postman.
 
 ---
 
@@ -17,7 +17,7 @@ API REST Laravel de l'écosystème Shop Keeper. Elle sert d'abord l'app du comme
 | Base de données | MySQL 8, tests compris (base `shop_keeper_test`) |
 | Cache, limites, file d'attente | Redis |
 | Environnement | Docker Compose : PHP-FPM, Nginx, worker de file, MySQL, Redis, Mailpit |
-| Authentification | Laravel Sanctum, un jeton par appareil, connexion par téléphone + PIN |
+| Authentification | Laravel Sanctum, un jeton par appareil, connexion Google ou e-mail et mot de passe, vérification en deux étapes optionnelle : un nouveau code à 6 chiffres envoyé par e-mail à chaque connexion |
 | Tests | Pest |
 | Qualité | Pint |
 
@@ -52,11 +52,11 @@ Toute la configuration passe par `.env` ; aucun hébergeur n'est encore choisi. 
 
 ## Tester avec Postman
 
-L'API est exposée sous `/api/v1`. Chaque spec livre une collection Postman (ou un fichier OpenAPI que Postman importe) à jour avec ses endpoints.
+L'API est exposée sous `/api/v1`. Chaque spec livre une collection Postman à jour avec ses endpoints, dans [`postman/`](postman/). Un test vérifie que chaque route de l'API a sa requête dans la collection.
 
-1. Importer la collection de la spec dans Postman.
-2. Créer un compte, puis se connecter : la réponse contient un jeton.
-3. Ajouter ce jeton dans l'en-tête `Authorization: Bearer <jeton>` des autres requêtes.
+1. Mettre `AUTH_TEST_MODE=true` dans `.env`, puis lancer `docker compose restart queue`. Ce mode remplace Google par `test:<email>` et chaque code envoyé par `000000` ; il est refusé en production.
+2. Importer `postman/shop-keeper-006.postman_collection.json` dans Postman et régler `base_url` sur `http://localhost:8000`.
+3. Lancer la collection dans l'ordre : le jeton passe d'une requête à l'autre tout seul.
 
 Les erreurs ont toujours le même format, avec un code stable (par exemple `shop.forbidden`) et sans texte destiné à l'utilisateur : c'est l'app qui traduit le code.
 
@@ -68,9 +68,9 @@ Le code est découpé par domaine métier. Chaque module contient ses modèles, 
 
 ```
 app/
-├── Shared/          # authentification, magasin courant, format d'erreur, argent
+├── Shared/          # format d'erreur, exigence de JSON
 └── Modules/
-    ├── Identity/    # comptes, appareils, connexion téléphone + PIN      (006)
+    ├── Identity/    # comptes, appareils, Google, e-mail, code par e-mail (006)
     ├── Shops/       # magasins                                          (006)
     ├── Catalog/     # global_products (catalogue commun), shop_products  (007)
     ├── Inventory/   # fournisseurs, réceptions, mouvements de stock     (007)
@@ -92,5 +92,5 @@ Les règles complètes sont dans [`CLAUDE.md`](CLAUDE.md) et dans la [constituti
 - **Argent** en entiers dans l'unité mineure de la devise (TND : millimes).
 - **Aucune modification après coup** pour les ventes, paiements, crédits et mouvements de stock : une correction est un nouvel enregistrement.
 - **UUID** générés par le téléphone, stockés en `BINARY(16)`.
-- **Sécurité.** Secrets uniquement dans `.env`, PIN hachés, aucune donnée personnelle dans les logs.
+- **Sécurité.** Secrets uniquement dans `.env`, mots de passe et codes hachés, aucune donnée personnelle dans les logs.
 - **Tests** pour chaque endpoint : succès, validation, accès sans connexion, accès à un autre magasin.

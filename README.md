@@ -58,6 +58,7 @@ Ces règles viennent de la [constitution du projet](.specify/memory/constitution
 - **L'argent en entiers**, dans l'unité mineure de la devise (TND : millimes), jamais en `float`.
 - **Rien n'est modifié après coup** pour l'argent et le stock : une correction est un nouvel enregistrement.
 - **Crédit client et moyen de paiement sont distincts** : une vente est réglée tout de suite ou mise à crédit, et chaque règlement a son moyen (espèces, chèque, carte, virement).
+- **Connexion protégée.** Connexion avec Google ou par e-mail et mot de passe. En option, la vérification en deux étapes envoie un nouveau code à 6 chiffres par e-mail à chaque connexion : le commerçant n'a aucun code à retenir.
 - **Données.** Les données saisies appartiennent à la plateforme (conditions d'utilisation) ; un magasin ne voit que les siennes ; tout partage avec des tiers est anonymisé selon la loi.
 - **Une app indépendante par acteur**, qui ne parle aux autres qu'à travers l'API.
 
@@ -101,7 +102,7 @@ Chaque feature passe par [Spec Kit](https://github.com/github/spec-kit) : `speci
 | [`003-ledger-visual-redesign`](specs/003-ledger-visual-redesign/spec.md) | Refonte visuelle de tous les écrans | Clôturée |
 | [`004-async-feedback`](specs/004-async-feedback/spec.md) | Services asynchrones, loader, toasts, squelettes, erreurs de champ | Clôturée |
 | [`005-dark-mode`](specs/005-dark-mode/spec.md) | Thème clair et sombre | Clôturée |
-| `006` | Authentification et magasin (backend seul, testable avec Postman) | Prochaine |
+| [`006-auth-shop`](specs/006-auth-shop/spec.md) | Comptes (Google ou e-mail et mot de passe), vérification en deux étapes par code envoyé par e-mail, magasin du commerçant (backend seul, testable avec Postman) | En cours |
 
 Chaque dossier `specs/NNN-*/` contient `spec.md` (le quoi), `plan.md` (le comment), `tasks.md` (les étapes), `data-model.md`, `research.md`, `quickstart.md` et `contracts/`.
 
