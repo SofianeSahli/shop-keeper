@@ -2,9 +2,9 @@
 
 namespace App\Modules\Identity;
 
-use App\Modules\Identity\Console\ResetPinCommand;
 use App\Modules\Identity\Google\GoogleIdentityChecker;
 use App\Modules\Identity\Google\TestModeVerifier;
+use App\Modules\Identity\Models\PendingSignIn;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -17,9 +17,9 @@ final class IdentityServiceProvider extends ServiceProvider
 
     private const EMAILS_PER_MINUTE_PER_ORIGIN = 10;
 
-    private const EMAILS_PER_ADDRESS = 3;
+    private const EMAILS_PER_RECIPIENT = 3;
 
-    private const EMAIL_ADDRESS_WINDOW_MINUTES = 15;
+    private const EMAIL_RECIPIENT_WINDOW_MINUTES = 15;
 
     public function register(): void
     {
@@ -34,10 +34,6 @@ final class IdentityServiceProvider extends ServiceProvider
         Route::middleware('api')->prefix('api/v1')->group(__DIR__.'/routes.php');
 
         $this->defineRateLimiters();
-
-        if ($this->app->runningInConsole()) {
-            $this->commands([ResetPinCommand::class]);
-        }
     }
 
     private function defineRateLimiters(): void
@@ -46,15 +42,46 @@ final class IdentityServiceProvider extends ServiceProvider
             ->by('origin:'.$request->ip()));
 
         RateLimiter::for('identity-email-send', function (Request $request): array {
-            $limits = [Limit::perMinute(self::EMAILS_PER_MINUTE_PER_ORIGIN)->by('origin:'.$request->ip())];
-            $email = $request->input('email');
+            $recipientKeys = array_filter([$this->addressKey($request), $this->accountKey($request)]);
 
-            if (is_string($email) && $email !== '') {
-                $limits[] = Limit::perMinutes(self::EMAIL_ADDRESS_WINDOW_MINUTES, self::EMAILS_PER_ADDRESS)
-                    ->by('address:'.hash('sha256', mb_strtolower(trim($email))));
-            }
-
-            return $limits;
+            return [
+                Limit::perMinute(self::EMAILS_PER_MINUTE_PER_ORIGIN)->by('origin:'.$request->ip()),
+                ...array_map(
+                    fn (string $key): Limit => Limit::perMinutes(self::EMAIL_RECIPIENT_WINDOW_MINUTES, self::EMAILS_PER_RECIPIENT)->by($key),
+                    $recipientKeys,
+                ),
+            ];
         });
+    }
+
+    private function addressKey(Request $request): ?string
+    {
+        $email = $request->input('email');
+
+        if (! is_string($email) || $email === '') {
+            return null;
+        }
+
+        return 'address:'.hash('sha256', mb_strtolower(trim($email)));
+    }
+
+    private function accountKey(Request $request): ?string
+    {
+        $accountId = $request->user()?->id ?? $this->accountIdOfPendingSignIn($request);
+
+        return $accountId === null ? null : 'account:'.$accountId;
+    }
+
+    private function accountIdOfPendingSignIn(Request $request): ?int
+    {
+        $pendingToken = $request->input('pending_sign_in');
+
+        if (! is_string($pendingToken)) {
+            return null;
+        }
+
+        return PendingSignIn::query()
+            ->where('token_hash', PendingSignIn::hashToken($pendingToken))
+            ->value('user_id');
     }
 }

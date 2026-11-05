@@ -54,8 +54,8 @@ description: "Task list for the merchant account and shop backend"
 - [X] T009 Create `App\Shared\Errors\ApiErrorRenderer` in `app/Shared/Errors/ApiErrorRenderer.php` and register it in `bootstrap/app.php`, rendering `{ "error": { "code", "fields"?, "retry_after_seconds"? } }` for `ApiException`, validation, authentication (`auth.unauthenticated`), 404, 405, throttling and any other exception; report `QueryException` with its SQL state only (research R8)
 - [X] T010 [P] Create `App\Shared\Http\RequireJson` in `app/Shared/Http/RequireJson.php`, answering a non-JSON body with `request.not_json`, and apply it to the `api` middleware group in `bootstrap/app.php`
 - [X] T011 Create `app/Modules/Identity/IdentityServiceProvider.php`, which loads `app/Modules/Identity/database/migrations` and `app/Modules/Identity/routes.php` under the `api/v1` prefix and `api` middleware, and register it in `bootstrap/providers.php`
-- [X] T012 Move `app/Models/User.php` to `app/Modules/Identity/Models/User.php` with `HasApiTokens`, hidden `password`, `pin_hash` and `remember_token`, and the new casts; move `database/factories/UserFactory.php` to `app/Modules/Identity/database/factories/UserFactory.php` with its `newFactory()` wiring, and update `config/auth.php`
-- [X] T013 Add migration `app/Modules/Identity/database/migrations/2026_11_01_000001_add_identity_columns_to_users_table.php`: `name` string(120); `password` made nullable; `google_id` string, null, unique; `phone` string(16), null, not unique; `terms_version` string(20); `terms_accepted_at` timestamp; `pin_hash` string, null; `pin_failed_attempts` tiny unsigned, default 0; `pin_locked_until` timestamp, null; `password_failed_attempts` tiny unsigned, default 0; `password_locked_until` timestamp, null. Keep `email` unique and stored lowercase
+- [X] T012 Move `app/Models/User.php` to `app/Modules/Identity/Models/User.php` with `HasApiTokens`, hidden `password`, `pin_hash` and `remember_token`, and the new casts; move `database/factories/UserFactory.php` to `app/Modules/Identity/database/factories/UserFactory.php` with its `newFactory()` wiring, and update `config/auth.php` *(PIN parts superseded on 2026-11-02, see T058)*
+- [X] T013 Add migration `app/Modules/Identity/database/migrations/2026_11_01_000001_add_identity_columns_to_users_table.php`: `name` string(120); `password` made nullable; `google_id` string, null, unique; `phone` string(16), null, not unique; `terms_version` string(20); `terms_accepted_at` timestamp; `pin_hash` string, null; `pin_failed_attempts` tiny unsigned, default 0; `pin_locked_until` timestamp, null; `password_failed_attempts` tiny unsigned, default 0; `password_locked_until` timestamp, null. Keep `email` unique and stored lowercase *(PIN parts superseded on 2026-11-02, see T057)*
 - [X] T014 [P] Create `App\Modules\Identity\AuthTestMode` in `app/Modules/Identity/AuthTestMode.php` with the single check, true only when `auth_test_mode` is set and the environment is not `production` (research R7), with tests in `app/Modules/Identity/Tests/AuthTestModeTest.php` covering SC-008
 - [X] T015 Define the named rate limiters in `app/Modules/Identity/IdentityServiceProvider.php`: `identity-sign-in`, 30 per minute per origin, for sign-in and code checks; `identity-email-send`, 10 per minute per origin and 3 per 15 minutes per lowercase address, for sign-up, resend and forgot-password; both end in `request.throttled`
 - [X] T016 [P] Write tests in `app/Modules/Identity/Tests/InternationalPhoneTest.php`: `+216 20 123 456` and `0021620123456` both give `+21620123456`; `+33 6 12 34 56 78` and `(+1) 202-555-0143` are accepted; `20123456`, `+0123456`, `+12345` and 16-digit numbers give `phone.invalid`
@@ -122,7 +122,7 @@ description: "Task list for the merchant account and shop backend"
 
 - [X] T033 [P] [US7] Write feature tests in `app/Modules/Identity/Tests/EmailSignUpTest.php`: register gives 202 with a queued code and no session; signing up again replaces the name, password and code of an unconfirmed row; `email.taken` on a confirmed address; confirm gives a session; `code.invalid` for wrong, expired (15 minutes), used and unknown codes; a code dies after 5 wrong tries; resend gives the same 202 for any address; email compared lowercase; `password.too_short` under 8 characters and refused over 72 bytes; `validation.failed` per field; the per-address limit
 - [X] T034 [P] [US7] Write feature tests in `app/Modules/Identity/Tests/PasswordSignInTest.php`: session on the right password; `auth.email_unconfirmed` for an unconfirmed address with the right password; identical `auth.invalid_credentials` for a wrong password and an unknown email, with the dummy hash checked for the unknown email; `auth.password_locked` with `retry_after_seconds` after 5 failures even with the right password; a success resets the count; the lock ends after 15 minutes
-- [X] T035 [P] [US7] Write feature tests in `app/Modules/Identity/Tests/PasswordResetTest.php`: forgot gives an identical 202 for a known and an unknown address, with mail queued only for the known one; reset gives 204, the new password works, all sessions end and the PIN stays on; `code.invalid` cases
+- [X] T035 [P] [US7] Write feature tests in `app/Modules/Identity/Tests/PasswordResetTest.php`: forgot gives an identical 202 for a known and an unknown address, with mail queued only for the known one; reset gives 204, the new password works, all sessions end and the PIN stays on; `code.invalid` cases *(PIN parts superseded on 2026-11-02, see T058)*
 
 ### Implementation for User Story 7
 
@@ -133,7 +133,7 @@ description: "Task list for the merchant account and shop backend"
 - [X] T040 [US7] Create `App\Modules\Identity\Actions\RegisterWithEmail` in `app/Modules/Identity/Actions/RegisterWithEmail.php`, including the unconfirmed-row replacement (research R11), and `ResendEmailCode` in `app/Modules/Identity/Actions/ResendEmailCode.php`
 - [X] T041 [US7] Create `App\Modules\Identity\Actions\ConfirmEmail` in `app/Modules/Identity/Actions/ConfirmEmail.php`, counting wrong tries under `lockForUpdate`, deleting a used code, and ending in `FinishSignIn`
 - [X] T042 [US7] Create `App\Modules\Identity\Actions\SignInWithPassword` in `app/Modules/Identity/Actions/SignInWithPassword.php`, with the dummy hash, counters and `password_locked_until` under `lockForUpdate` (research R4), ending in `FinishSignIn`
-- [X] T043 [US7] Create `RequestPasswordReset` and `ResetPassword` in `app/Modules/Identity/Actions/`; `ResetPassword` deletes all the account's tokens and leaves `pin_hash` unchanged
+- [X] T043 [US7] Create `RequestPasswordReset` and `ResetPassword` in `app/Modules/Identity/Actions/`; `ResetPassword` deletes all the account's tokens and leaves `pin_hash` unchanged *(PIN parts superseded on 2026-11-02, see T058)*
 - [X] T044 [US7] Create form requests in `app/Modules/Identity/Controllers/Requests/`: `name` required, at most 120 characters after trimming; `email` valid address, compared lowercase; `password` at least 8 characters, at most 72 bytes (the bcrypt input limit); `code` 6 digits; `device_id` required UUID, client-generated; `terms_version` must equal the configured current version; `phone` optional, `InternationalPhone`
 - [X] T045 [US7] Create `EmailSignUpController`, `PasswordSignInController` and `PasswordResetController` in `app/Modules/Identity/Controllers/`, and add `POST /auth/email/register|confirm|resend|login` and `POST /auth/password/forgot|reset` with their limiters to `app/Modules/Identity/routes.php`
 
@@ -183,31 +183,36 @@ description: "Task list for the merchant account and shop backend"
 
 ---
 
-## Phase 8: User Story 3 - Protect my account with a PIN (Priority: P2)
+## Phase 8: User Story 3 - Protect my account with a code sent by email (Priority: P2)
 
-**Goal**: An optional 6-digit PIN holds new sign-ins until it is confirmed, with lockout and recovery.
+**Goal**: Optional two-step sign-in: each Google or password sign-in emails a new 6-digit code, and the session comes only once that code is sent back.
 
-**Independent Test**: Turn on a PIN, sign in on a new device, see `pin_required` and no session, send the PIN and get one. Then send wrong PINs until `pin.locked`.
+**Independent Test**: Turn on two-step sign-in, sign in on a new device, see `code_required`, no session and a code in Mailpit, send the code and get a session. Then send 5 wrong codes and see `auth.pending_invalid`.
+
+**Rework (2026-11-02)**: The owner replaced the PIN second factor with an emailed code (spec clarifications of 2026-11-02, research R13, constitution 3.1.0). The PIN tasks delivered on 2026-11-01 (former T056 to T067) are superseded; their code is still in `app/Modules/Identity` and is removed here. Do not extend it.
+
+### Removal of the PIN
+
+- [X] T056 [US3] Delete the PIN code: `CheckPin`, `ConfirmPin`, `EnablePin`, `ChangePin`, `DisablePin`, `RecoverPin` and `ResetPinByOperator` in `app/Modules/Identity/Actions/`; `ResetPinCommand` in `app/Modules/Identity/Console/` and its registration in `IdentityServiceProvider`; `NotWeakPin` in `app/Modules/Identity/Rules/`; the PIN form requests; `PinController` and `PinSignInController`; the `POST /auth/pin` and `/me/pin*` routes; and `PinManagementTest.php`, `PinSignInTest.php`, `PinRecoveryTest.php`
+- [X] T057 [US3] Edit the 006 migrations, which are not released: in `2026_11_01_000001_add_identity_columns_to_users_table.php`, replace `pin_hash`, `pin_failed_attempts` and `pin_locked_until` with `two_factor_enabled_at` timestamp, null; in `2026_11_01_000004_create_pending_sign_ins_table.php`, add `code_hash` string and `failed_attempts` tiny unsigned, default 0. Then run `docker compose exec app php artisan migrate:fresh`
+- [X] T058 [US3] Update `User` (hidden fields, casts, `hasTwoFactor()` instead of `hasPin()`), `AccountResource` (`two_factor_enabled` instead of `pin_enabled`), `ResetPassword` (leaves `two_factor_enabled_at` as it is) and the user factory; keep `RunCountedAttempt` for passwords only
 
 ### Tests for User Story 3
 
-- [X] T056 [P] [US3] Write feature tests in `app/Modules/Identity/Tests/PinManagementTest.php`: set gives 204 and devices stay signed in; `pin.already_enabled`; `pin.format`; `pin.weak` for one repeated digit, for a run inside `0123456789` and for its reverse; change and turn off with the current PIN; a wrong current PIN counts as a wrong PIN; `pin.not_enabled`; `auth.unauthenticated`
-- [X] T057 [P] [US3] Write feature tests in `app/Modules/Identity/Tests/PinSignInTest.php`: Google and password sign-in both give `pin_required` with no session, then a session after the right PIN; `auth.pending_invalid` when expired after 5 minutes, used or unknown; `pin.invalid`; `pin.locked` with `retry_after_seconds` after 5 failures even with the right PIN; a right PIN resets the count; the lock ends after 15 minutes
-- [X] T058 [P] [US3] Write feature tests in `app/Modules/Identity/Tests/PinRecoveryTest.php`: recovery by `password` and by `id_token` sets the new PIN and ends other devices; wrong proof is refused; `merchant:reset-pin <email>` turns off the PIN and ends all sessions, and no API route reaches it
+- [X] T059 [P] [US3] Write feature tests in `app/Modules/Identity/Tests/TwoFactorManagementTest.php`: turning on gives 204 and devices stay signed in; `two_factor.already_enabled`; `POST /me/two-factor/disable-code` gives 202 and queues a mail; `DELETE /me/two-factor` with the right code gives 204; a wrong, expired or used code gives `code.invalid` and the factor stays on; `two_factor.not_enabled`; no session ends; `auth.unauthenticated`
+- [X] T060 [P] [US3] Write feature tests in `app/Modules/Identity/Tests/TwoFactorSignInTest.php`: Google and password sign-in both give `code_required` with no session and queue a mail; the right code gives a session; `code.invalid` for a wrong code; after 5 wrong codes `auth.pending_invalid`, even with the right code; `auth.pending_invalid` after 10 minutes, for a used or unknown pending sign-in; a code does not work on another pending sign-in; a resend kills the previous code and restarts the 10 minutes; resends are throttled; with the factor off, sign-in gives a session directly
 
 ### Implementation for User Story 3
 
-- [X] T059 [P] [US3] Add migration `app/Modules/Identity/database/migrations/2026_11_01_000004_create_pending_sign_ins_table.php`: `id`; `user_id` FK users, cascade delete; `device_id` uuid string; `token_hash` char(64), unique, SHA-256 of a random token; `expires_at` timestamp, 5 minutes after creation; timestamps
-- [X] T060 [P] [US3] Create the `PendingSignIn` model in `app/Modules/Identity/Models/PendingSignIn.php`
-- [X] T061 [P] [US3] Create `App\Modules\Identity\Rules\NotWeakPin` in `app/Modules/Identity/Rules/NotWeakPin.php`: exactly 6 digits; not one repeated digit; not a run inside `0123456789` or its reverse
-- [X] T062 [US3] Extend `FinishSignIn` in `app/Modules/Identity/Actions/FinishSignIn.php`: with a PIN on, create a pending sign-in from 40 random bytes stored as SHA-256 (research R5) and return `pending_sign_in` and `expires_in_seconds`; extend `SessionResource` with the PIN needed shape
-- [X] T063 [US3] Create `App\Modules\Identity\Actions\ConfirmPin` in `app/Modules/Identity/Actions/ConfirmPin.php`, with counters and `pin_locked_until` under `lockForUpdate`, deleting the row once used and removing an expired row when presented, ending in `IssueDeviceSession`
-- [X] T064 [US3] Create `EnablePin`, `ChangePin` and `DisablePin` in `app/Modules/Identity/Actions/`, with wrong current PINs counted under the same lock rules
-- [X] T065 [US3] Create `RecoverPin` in `app/Modules/Identity/Actions/RecoverPin.php`, proving identity with `id_token` or `password`, and deleting every token except the current one
-- [X] T066 [US3] Create `ResetPinByOperator` in `app/Modules/Identity/Actions/ResetPinByOperator.php` and the `merchant:reset-pin` command in `app/Modules/Identity/Console/ResetPinCommand.php`, registered in `IdentityServiceProvider`
-- [X] T067 [US3] Create form requests in `app/Modules/Identity/Controllers/Requests/`, `PinController` and `PinSignInController` in `app/Modules/Identity/Controllers/`, and add `POST /auth/pin` (limiter `identity-sign-in`) and `POST|PUT|DELETE /me/pin` and `POST /me/pin/recovery` (`auth:sanctum`) to `app/Modules/Identity/routes.php`
+- [X] T061 [US3] Extract code generation from `SendEmailCode` into one shared class used by every emailed code (6 digits, `000000` in test mode); add `EmailCodePurpose::TwoFactorDisable` (`two_factor_disable`) and a sign-in purpose for `EmailCodeMail`, with the subject in French and Arabic like the others
+- [X] T062 [US3] Extend `FinishSignIn` in `app/Modules/Identity/Actions/FinishSignIn.php`: with two-step sign-in on, create the pending sign-in with a new code, store its hash, queue `EmailCodeMail`, and return `code_required`, `pending_sign_in` and `expires_in_seconds` (600); update `SignInResult` and `SessionResource`
+- [X] T063 [US3] Create `ConfirmSignInCode` (locks the pending row, refuses an expired one, counts wrong codes and deletes the row at 5, deletes it once used, ends in `IssueDeviceSession`) and `ResendSignInCode` (new code, `failed_attempts` back to 0, new 10 minutes) in `app/Modules/Identity/Actions/`
+- [X] T064 [US3] Create `EnableTwoFactor`, `SendTwoFactorDisableCode` (through `SendEmailCode`) and `DisableTwoFactor` (consumes the code through `ConsumeEmailCode`) in `app/Modules/Identity/Actions/`
+- [X] T065 [US3] Create the form requests, `TwoFactorController` and `TwoFactorSignInController` in `app/Modules/Identity/Controllers/`, and add to `app/Modules/Identity/routes.php`: `POST /auth/two-factor` (limiter `identity-sign-in`), `POST /auth/two-factor/resend` (limiter `identity-email-send`), and `POST /me/two-factor`, `POST /me/two-factor/disable-code` (also `identity-email-send`) and `DELETE /me/two-factor` (`auth:sanctum`). Extend `identity-email-send` so it counts per account when the request has no `email`
+- [X] T066 [US3] Update `postman/shop-keeper-006.postman_collection.json`: replace the "4. PIN" folder with turn on, sign in on a new device (`code_required`), send `000000`, ask for a disable code, turn off; remove the `pin`, `new_pin` and `recovered_pin` variables; check `two_factor_enabled` in the last `GET /me`. The owner reruns the collection by hand
+- [X] T067 [US3] Update the journey in `tests/Feature/Shared/NoSecretsInLogsTest.php` to use two-step sign-in instead of the PIN; compare `contracts/api.md` with the routes; run `docker compose exec app php artisan test` (including `ApiCollectionTest`) and `docker compose exec app vendor/bin/pint`
 
-**Checkpoint**: All 16 endpoints from `contracts/api.md` exist.
+**Checkpoint**: All 16 endpoints from `contracts/api.md` exist, and no PIN code is left.
 
 ---
 
@@ -234,7 +239,7 @@ description: "Task list for the merchant account and shop backend"
 
 **Purpose**: Checks that span the stories
 
-- [X] T071 [P] Write `tests/Feature/Shared/NoSecretsInLogsTest.php`, running a sign-up, sign-in, PIN and reset journey and asserting that the log holds no name, email, phone, password, PIN, code, token or Google identity (FR-030, SC-005)
+- [X] T071 [P] Write `tests/Feature/Shared/NoSecretsInLogsTest.php`, running a sign-up, sign-in, PIN and reset journey and asserting that the log holds no name, email, phone, password, PIN, code, token or Google identity (FR-030, SC-005) *(PIN parts superseded on 2026-11-02, see T067)*
 - [X] T072 [P] Update the module list and Postman section of `README.md` if the delivered result differs, and record the two new packages and why they are needed for the PR description
 - [X] T073 Compare `contracts/api.md` with the delivered routes, responses and codes, and fix any drift in the same change
 - [X] T074 Run `docker compose exec app php artisan test` and `docker compose exec app vendor/bin/pint --test`
@@ -258,7 +263,7 @@ description: "Task list for the merchant account and shop backend"
 - **US7 (P1)**: Only Foundational. It can run in parallel with US1.
 - **US4 (P1)**: Needs a signed-in merchant, which tests get from a factory, so it only needs Foundational to be tested. Its journey needs US1 or US7.
 - **US5 (P1)**: Depends on US4 for the shop.
-- **US3 (P2)**: Sign-in with a PIN and recovery need both US1 and US7.
+- **US3 (P2)**: Two-step sign-in needs both US1 and US7.
 - **US6 (P2)**: Depends on every other story, because it covers all endpoints.
 
 ### Within Each User Story
@@ -302,7 +307,7 @@ Task: "Create queued EmailCodeMail"
 
 1. MVP: a merchant signs in with Google and creates a shop.
 2. Add US7: shopkeepers with no Google account can join. All P1 stories are done.
-3. Add US3: the optional PIN.
+3. Add US3: optional two-step sign-in with an emailed code.
 4. Add US6, then Polish: the collection and final checks.
 
 All of this ships in one pull request with one commit, as the repository rules require.

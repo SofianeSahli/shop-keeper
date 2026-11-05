@@ -14,7 +14,7 @@ it('reads the signed-in account', function () {
             'name' => $user->name,
             'email' => $user->email,
             'phone' => '+21620123456',
-            'pin_enabled' => false,
+            'two_factor_enabled' => false,
             'shop' => null,
         ]]);
 });
@@ -48,17 +48,14 @@ it('shows only the merchant own shop', function () {
         ->assertJsonPath('data.shop', null);
 });
 
-it('says whether a PIN is on and never returns a hash', function () {
-    $user = User::factory()->withPin('483920')->create();
+it('says whether two-step sign-in is on and never returns a hash', function () {
+    $user = User::factory()->withTwoFactor()->create();
     $token = $user->createToken(fakeDeviceId())->plainTextToken;
 
     $response = $this->withToken($token)->getJson('/api/v1/me');
 
-    $response->assertOk()->assertJsonPath('data.pin_enabled', true);
-    expect($response->getContent())
-        ->not->toContain($user->pin_hash)
-        ->not->toContain($user->password)
-        ->not->toContain('pin_hash');
+    $response->assertOk()->assertJsonPath('data.two_factor_enabled', true);
+    expect($response->getContent())->not->toContain($user->password);
 });
 
 it('refuses a missing or invalid session', function () {

@@ -13,16 +13,10 @@ final class CheckPassword
 
     public function handle(User $user, string $password): bool
     {
-        return $this->runCountedAttempt->handle(
-            $user,
-            'password_failed_attempts',
-            'password_locked_until',
-            'auth.password_locked',
-            function (User $lockedRow) use ($password): bool {
-                $matchesStoredOrDummy = Hash::check($password, $lockedRow->password ?? self::DUMMY_HASH);
+        return $this->runCountedAttempt->handle($user, function (User $lockedRow) use ($password): bool {
+            $matchesStoredOrDummy = Hash::check($password, $lockedRow->password ?? self::DUMMY_HASH);
 
-                return $lockedRow->password !== null && $matchesStoredOrDummy;
-            },
-        );
+            return $lockedRow->password !== null && $matchesStoredOrDummy;
+        });
     }
 }

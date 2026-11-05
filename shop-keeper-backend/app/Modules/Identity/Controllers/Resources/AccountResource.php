@@ -15,7 +15,7 @@ final class AccountResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
-            'pin_enabled' => $this->hasPin(),
+            'two_factor_enabled' => $this->hasTwoFactor(),
             'shop' => app(FindShopOfOwner::class)->handle($this->id),
         ];
     }

@@ -2,10 +2,10 @@
 
 namespace App\Modules\Identity\Controllers\Requests;
 
-final class EnablePinRequest extends IdentityRequest
+final class DisableTwoFactorRequest extends IdentityRequest
 {
     public function rules(): array
     {
-        return ['pin' => $this->newPinRules()];
+        return ['code' => $this->codeRules()];
     }
 }

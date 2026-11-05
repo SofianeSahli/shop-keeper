@@ -4,7 +4,7 @@ API REST Laravel de l'écosystème Shop Keeper. Elle sert d'abord l'app du comme
 
 ← Retour au [README principal](../README.md)
 
-> **État : phase 1 en cours.** La spec **006 — Authentification et magasin** est livrée : compte du patron (connexion Google ou e-mail, PIN optionnel) et création de son magasin, testables avec Postman.
+> **État : phase 1 en cours.** La spec **006 — Authentification et magasin** est livrée : compte du patron (connexion Google ou e-mail, vérification en deux étapes optionnelle par code envoyé par e-mail) et création de son magasin, testables avec Postman.
 
 ---
 
@@ -17,7 +17,7 @@ API REST Laravel de l'écosystème Shop Keeper. Elle sert d'abord l'app du comme
 | Base de données | MySQL 8, tests compris (base `shop_keeper_test`) |
 | Cache, limites, file d'attente | Redis |
 | Environnement | Docker Compose : PHP-FPM, Nginx, worker de file, MySQL, Redis, Mailpit |
-| Authentification | Laravel Sanctum, un jeton par appareil, connexion Google ou e-mail et mot de passe, PIN optionnel en second facteur |
+| Authentification | Laravel Sanctum, un jeton par appareil, connexion Google ou e-mail et mot de passe, vérification en deux étapes optionnelle : un nouveau code à 6 chiffres envoyé par e-mail à chaque connexion |
 | Tests | Pest |
 | Qualité | Pint |
 
@@ -70,7 +70,7 @@ Le code est découpé par domaine métier. Chaque module contient ses modèles, 
 app/
 ├── Shared/          # format d'erreur, exigence de JSON
 └── Modules/
-    ├── Identity/    # comptes, appareils, Google, e-mail, PIN optionnel (006)
+    ├── Identity/    # comptes, appareils, Google, e-mail, code par e-mail (006)
     ├── Shops/       # magasins                                          (006)
     ├── Catalog/     # global_products (catalogue commun), shop_products  (007)
     ├── Inventory/   # fournisseurs, réceptions, mouvements de stock     (007)
@@ -92,5 +92,5 @@ Les règles complètes sont dans [`CLAUDE.md`](CLAUDE.md) et dans la [constituti
 - **Argent** en entiers dans l'unité mineure de la devise (TND : millimes).
 - **Aucune modification après coup** pour les ventes, paiements, crédits et mouvements de stock : une correction est un nouvel enregistrement.
 - **UUID** générés par le téléphone, stockés en `BINARY(16)`.
-- **Sécurité.** Secrets uniquement dans `.env`, PIN hachés, aucune donnée personnelle dans les logs.
+- **Sécurité.** Secrets uniquement dans `.env`, mots de passe et codes hachés, aucune donnée personnelle dans les logs.
 - **Tests** pour chaque endpoint : succès, validation, accès sans connexion, accès à un autre magasin.

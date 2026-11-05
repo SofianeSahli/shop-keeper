@@ -15,10 +15,8 @@ return new class extends Migration
             $table->string('phone', 16)->nullable()->after('google_id');
             $table->string('terms_version', 20)->after('phone');
             $table->timestamp('terms_accepted_at')->after('terms_version');
-            $table->string('pin_hash')->nullable()->after('terms_accepted_at');
-            $table->unsignedTinyInteger('pin_failed_attempts')->default(0)->after('pin_hash');
-            $table->timestamp('pin_locked_until')->nullable()->after('pin_failed_attempts');
-            $table->unsignedTinyInteger('password_failed_attempts')->default(0)->after('pin_locked_until');
+            $table->timestamp('two_factor_enabled_at')->nullable()->after('terms_accepted_at');
+            $table->unsignedTinyInteger('password_failed_attempts')->default(0)->after('two_factor_enabled_at');
             $table->timestamp('password_locked_until')->nullable()->after('password_failed_attempts');
         });
     }
@@ -32,9 +30,7 @@ return new class extends Migration
                 'phone',
                 'terms_version',
                 'terms_accepted_at',
-                'pin_hash',
-                'pin_failed_attempts',
-                'pin_locked_until',
+                'two_factor_enabled_at',
                 'password_failed_attempts',
                 'password_locked_until',
             ]);

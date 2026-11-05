@@ -7,11 +7,15 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'device_id', 'token_hash', 'expires_at'])]
-#[Hidden(['token_hash'])]
+#[Fillable(['user_id', 'device_id', 'token_hash', 'code_hash', 'failed_attempts', 'expires_at'])]
+#[Hidden(['token_hash', 'code_hash'])]
 class PendingSignIn extends Model
 {
-    public const VALID_SECONDS = 300;
+    public const MAX_FAILED_ATTEMPTS = 5;
+
+    public const VALID_MINUTES = 10;
+
+    public const VALID_SECONDS = self::VALID_MINUTES * 60;
 
     public static function hashToken(string $token): string
     {
@@ -25,6 +29,9 @@ class PendingSignIn extends Model
 
     protected function casts(): array
     {
-        return ['expires_at' => 'datetime'];
+        return [
+            'failed_attempts' => 'integer',
+            'expires_at' => 'datetime',
+        ];
     }
 }

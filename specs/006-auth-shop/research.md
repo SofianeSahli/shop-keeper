@@ -20,16 +20,16 @@ Decisions for `specs/006-auth-shop/plan.md`. Sources: Laravel 13 Sanctum docs, G
 - **Decision**: Google counts as authoritative for an address only if it ends in `@gmail.com`, or `email_verified` is true and the `hd` claim is present. Linking to a confirmed account, or discarding an unconfirmed sign-up, requires that. Otherwise the sign-in is refused with `auth.google_email_conflict`. An address with no match needs no such check.
 - **Rationale**: Google's guide says that outside those two cases it is not authoritative for the address, and recommends another challenge. Linking on email alone would allow account takeover.
 
-## R4. Password and PIN attempt limits
+## R4. Password attempt limits
 
-- **Decision**: Counters and lock times live in columns on `users`, updated under a row lock. 5 consecutive failures lock for 15 minutes; a success resets the count. Network-origin limits use named Laravel rate limiters on the routes.
+- **Decision**: Password counters and lock times live in columns on `users`, updated under a row lock. 5 consecutive failures lock for 15 minutes; a success resets the count. Emailed codes, sign-in codes included, do not lock the account: a code dies after 5 wrong tries (R13). Network-origin limits use named Laravel rate limiters on the routes.
 - **Rationale**: SC-004 allows at most 5 wrong attempts in any 15-minute window. Laravel's `RateLimiter` uses fixed windows, so 5 at the end of one and 5 at the start of the next would pass.
 - **Unknown email**: the sign-in still checks a fixed dummy hash, so its timing matches a wrong password (FR-035).
 
 ## R5. Hashing
 
-- **Decision**: Passwords, PINs and emailed codes use `Hash::make` (bcrypt, Laravel's default). The pending sign-in token is 40 random bytes stored as SHA-256.
-- **Rationale**: PINs and 6-digit codes are small, so a slow hash is needed. A long random token does not need one.
+- **Decision**: Passwords and emailed codes, sign-in codes included, use `Hash::make` (bcrypt, Laravel's default). The pending sign-in token is 40 random bytes stored as SHA-256.
+- **Rationale**: 6-digit codes are small, so a slow hash is needed. A long random token does not need one.
 
 ## R6. Sending email
 
@@ -69,3 +69,10 @@ Decisions for `specs/006-auth-shop/plan.md`. Sources: Laravel 13 Sanctum docs, G
 - **Tests**: they run on MySQL in `shop_keeper_test`, so behavior matches the real database. SQLite is no longer used by the backend.
 - **Redis**: Laravel's cache store, so it holds the Google keys (R2) and the network-origin rate limits (R4), and it carries the mail queue (R6).
 - **Laravel Boost**: `shop-keeper-backend/CLAUDE.md` asks for it before application changes, so it is the first setup task, run inside the `app` container.
+
+## R13. Second factor: a code emailed at each sign-in
+
+- **Decision**: When two-step sign-in is on, every Google or password sign-in creates a pending sign-in and emails a new 6-digit code. The code's hash and its wrong-try count live on the `pending_sign_ins` row, so each sign-in has its own code and two devices signing in at once do not replace each other's code. The code is valid for 10 minutes; 5 wrong tries delete the pending sign-in. A resend replaces the code and restarts the 10 minutes, under the email-sending limiter. Turning the factor off needs a code from `email_codes` with the purpose `two_factor_disable`. Mail goes through the same queued `EmailCodeMail` (R6), and test mode answers `000000` (R7).
+- **Rationale**: Owner decision of 2026-11-02. The merchant remembers nothing, so there is no forgotten-PIN path, no weak-PIN rule and no operator reset. 10 minutes allows for slow mail. A dead code ends only that sign-in instead of locking the account, so a stranger who learned the password cannot block the owner.
+- **Accepted limit**: whoever controls the merchant's mailbox also receives the codes; for a Google sign-in with a Gmail address, that is the same Google account. The owner accepts this: securing the mailbox is the email provider's responsibility.
+- **Replaced**: the 6-digit PIN chosen by the merchant (decided 2026-11-01), with its change, recovery and `merchant:reset-pin` command.

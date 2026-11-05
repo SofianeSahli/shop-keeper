@@ -37,15 +37,15 @@ The collection uses `test:<email>` as the Google identity and `000000` as the em
 | 6 | Forgot password for an unknown and a known address | Identical answers |
 | 7 | Sign in on two `device_id`s, sign out of one | Only that session stops |
 | 8 | Sign in twice on one `device_id` | First session stops |
-| 9 | Turn on a PIN, sign in on a new device | `pin_required`, no session until the PIN |
-| 10 | 5 wrong PINs, then the right one | `pin.locked` with time left |
-| 11 | PIN recovery from a signed-in device | Other devices are signed out |
-| 12 | `docker compose exec app php artisan merchant:reset-pin <email>` | PIN off, all sessions ended |
+| 9 | Turn on two-step sign-in, sign in on a new device | `code_required`, a code in Mailpit, no session until the code |
+| 10 | 5 wrong codes, then the right one | `auth.pending_invalid`; a new sign-in sends a new code |
+| 11 | Ask for a new code while a sign-in waits | The first code gives `code.invalid`, the new one gives a session |
+| 12 | Turn off two-step sign-in with the emailed code | 204; the next sign-in gives a session directly |
 | 13 | Second shop for one merchant | `shop.already_exists` |
 | 14 | Merchant A reads merchant B's shop | `shop.forbidden`, no data |
 | 15 | Unknown address, or a non-JSON body | Common error shape |
 | 16 | `APP_ENV=production` with `AUTH_TEST_MODE=true`, then `test:<email>` | `auth.google_invalid` |
-| 17 | Search `storage/logs` after the journey | No emails, PINs, codes or tokens |
+| 17 | Search `storage/logs` after the journey | No emails, codes or tokens |
 
 ## Real Google check
 

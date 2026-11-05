@@ -19,9 +19,9 @@ use Laravel\Sanctum\HasApiTokens;
     'phone',
     'terms_version',
     'terms_accepted_at',
-    'pin_hash',
+    'two_factor_enabled_at',
 ])]
-#[Hidden(['password', 'pin_hash', 'remember_token'])]
+#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
@@ -31,9 +31,9 @@ class User extends Authenticatable
         return $this->email_verified_at !== null;
     }
 
-    public function hasPin(): bool
+    public function hasTwoFactor(): bool
     {
-        return $this->pin_hash !== null;
+        return $this->two_factor_enabled_at !== null;
     }
 
     protected static function newFactory(): UserFactory
@@ -47,8 +47,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'terms_accepted_at' => 'datetime',
-            'pin_failed_attempts' => 'integer',
-            'pin_locked_until' => 'datetime',
+            'two_factor_enabled_at' => 'datetime',
             'password_failed_attempts' => 'integer',
             'password_locked_until' => 'datetime',
         ];

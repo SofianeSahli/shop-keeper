@@ -53,8 +53,8 @@ it('sends no reset code for an unconfirmed sign-up', function () {
     Mail::assertNothingQueued();
 });
 
-it('sets the new password, ends all sessions and keeps the PIN', function () {
-    $user = ($this->account)(['pin_hash' => Hash::make('483920')]);
+it('sets the new password, ends all sessions and keeps two-step sign-in', function () {
+    $user = ($this->account)(['two_factor_enabled_at' => now()]);
     $phoneToken = $user->createToken(fakeDeviceId())->plainTextToken;
     $user->createToken(fakeDeviceId());
 
@@ -67,7 +67,7 @@ it('sets the new password, ends all sessions and keeps the PIN', function () {
     $user->refresh();
     expect(Hash::check('the new password', $user->password))->toBeTrue();
     expect($user->tokens()->count())->toBe(0);
-    expect($user->hasPin())->toBeTrue();
+    expect($user->hasTwoFactor())->toBeTrue();
 
     Auth::forgetGuards();
     $this->withToken($phoneToken)->getJson('/api/v1/me')->assertStatus(401);

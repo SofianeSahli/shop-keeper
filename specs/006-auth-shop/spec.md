@@ -10,7 +10,7 @@
 
 ## Context
 
-Features 001 to 005 run on a single phone with no account. From this feature on, shop data lives on the backend, so the backend needs to know who is calling and which shop they own. This feature is the first step: a merchant signs up with their Google account or with an email and password, signs in on their devices, can protect new sign-ins with a PIN, and creates their shop. Every later feature (products, stock, sales, customer credit, dashboard) hangs off that account and that shop.
+Features 001 to 005 run on a single phone with no account. From this feature on, shop data lives on the backend, so the backend needs to know who is calling and which shop they own. This feature is the first step: a merchant signs up with their Google account or with an email and password, signs in on their devices, can turn on two-step sign-in, where every sign-in also needs a one-time code sent to their email, and creates their shop. Every later feature (products, stock, sales, customer credit, dashboard) hangs off that account and that shop.
 
 This feature ships no screen. Its users reach it through the API; the merchant app connects to it in a later spec. The stories below describe what the merchant app will be able to do, and each one can be exercised directly with an API testing tool.
 
@@ -18,11 +18,17 @@ This feature ships no screen. Its users reach it through the API; the merchant a
 
 ### Session 2026-11-01
 
-- Q: How long is a PIN? → A: 6 digits.
-- Q: How does a merchant recover a forgotten PIN? → A: Google sign-in becomes the login and the PIN becomes an optional second factor. The constitution is amended to 3.0.0 accordingly, replacing the phone number plus PIN rule.
+- Q: How long is a PIN? → A: 6 digits. *(Superseded on 2026-11-02: there is no PIN.)*
+- Q: How does a merchant recover a forgotten PIN? → A: Google sign-in becomes the login and the PIN becomes an optional second factor. The constitution is amended to 3.0.0 accordingly, replacing the phone number plus PIN rule. *(The PIN part is superseded on 2026-11-02.)*
 - Q: Is the phone number required? → A: No, it is optional for now.
 - Q: Which phone numbers are accepted? → A: Any country. The number carries an international dialing code, chosen by the merchant, not only `+216`.
 - Q: What about a shopkeeper with no Google account? → A: Classic email and password sign-up is allowed too. The constitution's ban on it is removed in the same 3.0.0 amendment.
+
+### Session 2026-11-02
+
+- Q: What is the second factor? → A: Not a PIN chosen and remembered by the merchant. When the merchant turns on two-step sign-in, every sign-in, with Google or with a password, emails a new 6-digit code to the account's address, and the session is returned only after that code is sent back. This replaces the PIN decided on 2026-11-01 (constitution 3.1.0).
+- Q: Does the code protect a merchant whose mailbox is taken over? → A: No, and that is accepted: securing the mailbox is the email provider's responsibility, not this product's (owner decision).
+- Q: How long is a sign-in code valid? → A: 10 minutes, to allow for slow email.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -53,30 +59,29 @@ A merchant signs in with Google on a phone or tablet, stays signed in on that de
 
 **Acceptance Scenarios**:
 
-1. **Given** an account without a PIN, **When** the merchant signs in with Google from a new device, **Then** a session for that device is returned and the terms are not asked again.
+1. **Given** an account without two-step sign-in, **When** the merchant signs in with Google from a new device, **Then** a session for that device is returned and the terms are not asked again.
 2. **Given** a device that already has a session, **When** the merchant signs in again from it, **Then** the new session replaces the old one, which stops working.
 3. **Given** a signed-in device, **When** the merchant signs out, **Then** that device's session stops working and the other devices stay signed in.
 4. **Given** a missing, invalid or signed-out session, **When** any protected request is made, **Then** it is refused with the same stable code.
 
 ---
 
-### User Story 3 - Protect my account with a PIN (Priority: P2)
+### User Story 3 - Protect my account with a code sent by email (Priority: P2)
 
-A merchant who wants more protection turns on a 6-digit PIN. From then on, a sign-in from a new device needs both the normal sign-in and the PIN, so someone who gets into their Google account or learns their password still cannot open the shop. Devices already signed in keep working.
+A merchant who wants more protection turns on two-step sign-in. From then on, every sign-in, with Google or with a password, sends a new 6-digit code to the account's email address, and the session is returned only once that code is sent back. The merchant chooses and remembers nothing. Someone who learns the password still cannot open the shop without the mailbox. Devices already signed in keep working.
 
-**Why this priority**: It is optional and the account works without it, but it protects customer credit data for merchants who share a Google account or a phone.
+**Why this priority**: It is optional and the account works without it, but it protects customer credit data for merchants whose password is known by others.
 
-**Independent Test**: Turn on a PIN, sign in from a new device and see that the normal sign-in alone gives no session, then send the PIN and get one. Then send wrong PINs until the block starts.
+**Independent Test**: Turn on two-step sign-in, sign in and see that the normal sign-in alone gives no session and a code is emailed, then send the code and get a session. Then send wrong codes until the code stops working.
 
 **Acceptance Scenarios**:
 
-1. **Given** a signed-in merchant with no PIN, **When** they set a valid PIN, **Then** the second factor is on and their signed-in devices keep working.
-2. **Given** an account with a PIN, **When** the merchant signs in with Google or with their password from a new device, **Then** no session is returned yet, the answer says a PIN is needed, and a session is returned only after the right PIN is sent within 5 minutes.
-3. **Given** 5 wrong PINs in a row on an account, **When** another PIN is sent within 15 minutes, **Then** it is refused with a stable code and the time left, even if it is right.
-4. **Given** a weak PIN (one repeated digit, or a straight run such as `123456`), **When** the merchant sets it, **Then** it is refused with a stable code.
-5. **Given** a merchant with a PIN, **When** they change or turn off the PIN with the current PIN, **Then** the change applies; with a wrong current PIN, it is refused and counts as a wrong PIN.
-6. **Given** a merchant who forgot their PIN but is signed in on a device, **When** they confirm their identity with a fresh sign-in on that device, **Then** they can set a new PIN, and every other device is signed out.
-7. **Given** a merchant who forgot their PIN and has no signed-in device, **When** the operator confirms who they are and resets the PIN, **Then** the second factor is off and all their sessions have ended.
+1. **Given** a signed-in merchant without two-step sign-in, **When** they turn it on, **Then** it is on and their signed-in devices keep working.
+2. **Given** two-step sign-in on, **When** the merchant signs in with Google or with their password, **Then** no session is returned yet, the answer says a code is needed, a new 6-digit code is emailed to the account's address, and a session is returned only after that code is sent within 10 minutes.
+3. **Given** a sign-in waiting for its code, **When** a wrong code is sent 5 times, **Then** the code and the waiting sign-in stop working, even for the right code, and the merchant signs in again to get a new code.
+4. **Given** a sign-in waiting for its code, **When** the merchant asks for a new code, **Then** a new code is emailed and the previous one stops working.
+5. **Given** two sign-ins in a row, **When** each one is held, **Then** each gets its own new code, and a code works once and only for its own sign-in.
+6. **Given** a signed-in merchant with two-step sign-in on, **When** they ask to turn it off, **Then** a code is emailed and two-step sign-in turns off only once that code is sent back; with a wrong code it stays on.
 
 ---
 
@@ -107,7 +112,7 @@ A signed-in merchant reads their account and their shop. The account answer says
 
 **Acceptance Scenarios**:
 
-1. **Given** a merchant with a shop, **When** they read their account, **Then** the answer includes their name, email, phone number if given, whether a PIN is on, and their shop, and never the PIN or its hash.
+1. **Given** a merchant with a shop, **When** they read their account, **Then** the answer includes their name, email, phone number if given, whether two-step sign-in is on, and their shop, and never a password, a code or a hash.
 2. **Given** a merchant with no shop, **When** they read their account, **Then** the answer shows clearly that there is no shop yet.
 3. **Given** two merchants with one shop each, **When** the first asks for the second's shop, **Then** the request is refused with a stable code and nothing about that shop is revealed.
 
@@ -115,7 +120,7 @@ A signed-in merchant reads their account and their shop. The account answer says
 
 ### User Story 6 - Try the API with standard tools (Priority: P2)
 
-A developer or the owner imports the published API collection into Postman and runs the whole journey: sign in, create the shop, read it, turn on a PIN, sign out. Every failure has the same shape and a stable code, which the apps will translate into French, Arabic and English.
+A developer or the owner imports the published API collection into Postman and runs the whole journey: sign in, create the shop, read it, turn on two-step sign-in, sign in with the emailed code, sign out. Every failure has the same shape and a stable code, which the apps will translate into French, Arabic and English.
 
 **Why this priority**: The merchant app connects in a later spec, so this collection is how the feature is checked until then. It adds no merchant-facing value on its own.
 
@@ -146,7 +151,7 @@ A shopkeeper with no Google account, or who prefers not to use it, signs up with
 5. **Given** a wrong password or an unknown email, **When** someone signs in, **Then** the answer is the same in both cases.
 6. **Given** 5 wrong passwords in a row on an account, **When** another attempt is made within 15 minutes, **Then** it is refused with a stable code and the time left, even if the password is right.
 7. **Given** a forgotten password, **When** the merchant asks for a reset, **Then** the answer is the same whether or not the email has an account, and an account's owner gets a 6-digit code by email.
-8. **Given** a valid reset code within 15 minutes, **When** the merchant sets a new password, **Then** the new password works and all their sessions have ended. A PIN, if on, stays on.
+8. **Given** a valid reset code within 15 minutes, **When** the merchant sets a new password, **Then** the new password works and all their sessions have ended. Two-step sign-in, if on, stays on.
 
 ### Edge Cases
 
@@ -157,8 +162,10 @@ A shopkeeper with no Google account, or who prefers not to use it, signs up with
 - **Email cannot be sent**: sending happens in the background and is retried, so the answer to the request stays the same. The merchant can ask for a new code.
 - **Google identity check unavailable**: if Google's keys cannot be obtained, the sign-in is refused with a retryable stable code, and existing sessions keep working.
 - **Replayed Google identity**: an identity already used can only be replayed until its short expiry; a new session replaces the same device's session and creates nothing else.
-- **PIN guessing on many accounts**: repeated failed attempts from one network origin are limited as well as those on one account.
-- **Someone blocks a merchant on purpose**: only a person who already passed Google sign-in can send PINs, and the block lasts 15 minutes at most. Sessions already open keep working.
+- **Code guessing**: a code stops working after 5 wrong tries, and code checks are also limited per network origin, so guessing a 6-digit code has no practical chance.
+- **Someone floods a merchant's mailbox**: only a person who passed Google or the password can make the system send a sign-in code, and code sending is limited per account and per network origin. Sessions already open keep working.
+- **Mailbox taken over**: someone who controls the merchant's mailbox receives the codes too. Securing the mailbox is the email provider's responsibility, not this product's (owner decision, 2026-11-02).
+- **Email late or missing**: the code stays valid for 10 minutes, and the merchant can ask for a new one while the sign-in waits.
 - **Two first sign-ins at the same moment**: exactly one account exists, and both requests end with a session for the same account.
 - **Merchant offline for weeks**: sessions do not expire by time, so a shopkeeper who stays offline is not signed out when they come back. A first sign-in on a device always needs a network.
 - **Shop name in Arabic or French**: names keep their exact text, including Arabic script and accents.
@@ -183,20 +190,20 @@ A shopkeeper with no Google account, or who prefers not to use it, signs up with
 
 - **FR-007**: The system MUST return a session for the device named in the sign-in, using a device identifier sent by the client.
 - **FR-008**: The system MUST keep at most one session per device for an account, and a new sign-in from a device MUST replace that device's previous session.
-- **FR-009**: Sessions MUST stay valid until the merchant signs out, the session is replaced, or a PIN recovery ends it; they MUST NOT expire by time.
+- **FR-009**: Sessions MUST stay valid until the merchant signs out, the session is replaced, or a password reset ends it; they MUST NOT expire by time.
 - **FR-010**: The system MUST let a merchant sign out of the current device without affecting their other devices.
 - **FR-011**: The system MUST limit sign-in attempts per network origin.
 - **FR-012**: The system MUST refuse every protected request that has no valid session, with one stable code.
 
-**PIN second factor**
+**Two-step sign-in (emailed code)**
 
-- **FR-013**: The PIN MUST be optional. A signed-in merchant MUST be able to turn it on, change it and turn it off; changing or turning it off MUST require the current PIN.
-- **FR-014**: A PIN MUST be exactly 6 digits, and the system MUST refuse one made of one repeated digit or of a straight ascending or descending run.
-- **FR-015**: When a PIN is on, a Google or password sign-in MUST NOT return a session until the right PIN is sent. The pending sign-in MUST expire after 5 minutes.
-- **FR-016**: The system MUST block PIN attempts on an account for 15 minutes after 5 consecutive wrong PINs, and MUST return the time left. A right PIN MUST reset the count.
-- **FR-017**: The system MUST store only a one-way hash of the PIN, and MUST NOT return it in any response.
-- **FR-018**: A merchant signed in on a device MUST be able to set a new PIN after a fresh Google or password sign-in on that device, without the current PIN. This MUST end the sessions of their other devices.
-- **FR-019**: An operator MUST be able to reset a merchant's PIN through a server-side command after checking their identity. This MUST turn off the PIN and end all their sessions. It MUST NOT be reachable through the API.
+- **FR-013**: Two-step sign-in MUST be optional and off by default. A signed-in merchant MUST be able to turn it on. Turning it off MUST require a 6-digit code emailed to the account's address for that purpose.
+- **FR-014**: When two-step sign-in is on, a Google or password sign-in MUST NOT return a session. It MUST hold the sign-in, email a new 6-digit code to the account's address, and return a session only when that code is sent back. The merchant MUST NOT have to choose or remember any code.
+- **FR-015**: A sign-in code and its held sign-in MUST expire 10 minutes after the code was sent, MUST work once, and MUST stop working after 5 wrong tries.
+- **FR-016**: While a sign-in is held, the merchant MUST be able to ask for a new code, which MUST replace the previous one. These requests MUST be limited per account and per network origin.
+- **FR-017**: Every held sign-in MUST get its own code. A code MUST NOT work for another held sign-in or for another purpose.
+- **FR-018**: The system MUST store only one-way hashes of sign-in codes, and MUST NOT return them in any response.
+- **FR-019**: Turning two-step sign-in on or off MUST NOT end any session.
 
 **Shop**
 
@@ -213,7 +220,7 @@ A shopkeeper with no Google account, or who prefers not to use it, signs up with
 - **FR-027**: Every failure, including validation, unknown addresses and server errors, MUST use one error shape with a stable machine code, plus a code per field for validation failures, and MUST contain no user-facing text.
 - **FR-028**: The feature MUST ship an API collection, importable into Postman, that covers every endpoint and runs the full journey in order, and it MUST be kept in sync with the endpoints.
 - **FR-029**: Local and test environments MUST offer a test identity that stands in for Google, and a way to read emailed codes without a mailbox, so the collection and automated tests can run. It MUST be off unless switched on by configuration, and it MUST refuse to work in production.
-- **FR-030**: Logs MUST NOT contain names, emails, phone numbers, passwords, PINs, emailed codes, session tokens or Google identities.
+- **FR-030**: Logs MUST NOT contain names, emails, phone numbers, passwords, emailed codes, session tokens or Google identities.
 - **FR-031**: Every endpoint MUST have automated tests for success, validation errors and unauthenticated access, and every endpoint that touches shop data MUST also be tested for access to another merchant's shop.
 
 **Email sign-up**
@@ -223,16 +230,16 @@ A shopkeeper with no Google account, or who prefers not to use it, signs up with
 - **FR-034**: The system MUST send a 6-digit code to confirm the address, valid for 15 minutes, and MUST NOT give a session or allow password sign-in until the address is confirmed.
 - **FR-035**: The system MUST let a merchant sign in with email, password and a device identifier, and MUST answer a wrong password and an unknown email identically.
 - **FR-036**: The system MUST block password sign-in on an account for 15 minutes after 5 consecutive wrong passwords, and MUST return the time left. A right password MUST reset the count.
-- **FR-037**: The system MUST let a merchant reset a forgotten password with a 6-digit emailed code valid for 15 minutes. The request MUST be answered identically whether or not the email has an account. A reset MUST end all the account's sessions and MUST NOT change the PIN.
+- **FR-037**: The system MUST let a merchant reset a forgotten password with a 6-digit emailed code valid for 15 minutes. The request MUST be answered identically whether or not the email has an account. A reset MUST end all the account's sessions and MUST NOT change two-step sign-in.
 - **FR-038**: The system MUST store only one-way hashes of passwords and emailed codes, and MUST NOT return either in any response. A code MUST work once and MUST stop working after 5 wrong tries.
 - **FR-039**: The system MUST limit sign-up, code and reset requests per email address and per network origin.
 
 ### Key Entities
 
-- **Merchant account**: a person who uses the app. Name, email (unique) and whether it is confirmed, optional Google permanent identifier (unique), optional password hash, optional standard phone number, accepted terms version and acceptance time, optional PIN hash.
-- **Device session**: a merchant's signed-in state on one device. Belongs to one account, identified by the device, replaced at the next sign-in from that device, ended by sign-out or PIN recovery.
-- **Pending sign-in**: a Google or password sign-in waiting for its PIN. Belongs to one account and one device, and expires after 5 minutes.
-- **Email code**: a one-time 6-digit code for confirming an address or resetting a password. Belongs to one address and one purpose, and expires after 15 minutes.
+- **Merchant account**: a person who uses the app. Name, email (unique) and whether it is confirmed, optional Google permanent identifier (unique), optional password hash, optional standard phone number, accepted terms version and acceptance time, and whether two-step sign-in is on.
+- **Device session**: a merchant's signed-in state on one device. Belongs to one account, identified by the device, replaced at the next sign-in from that device, ended by sign-out or a password reset.
+- **Pending sign-in**: a Google or password sign-in held until its emailed code comes back. Belongs to one account and one device, holds the hash of its own code and its wrong tries, and expires 10 minutes after the code was sent.
+- **Email code**: a one-time 6-digit code for confirming an address, resetting a password or turning off two-step sign-in. Belongs to one address and one purpose, and expires after 15 minutes.
 - **Shop**: a merchant's business. Name, business type, currency, optional city and address, and its owner. Later features attach their data to it.
 
 ## Success Criteria *(mandatory)*
@@ -241,9 +248,9 @@ A shopkeeper with no Google account, or who prefers not to use it, signs up with
 
 - **SC-001**: A merchant can go from no account to a created shop in 3 requests or fewer with Google (first sign-in, create the shop, read it), and in 4 with email (sign up, confirm the code, create the shop, read it).
 - **SC-002**: In testing, 100% of attempts by one merchant to reach another merchant's shop are refused and reveal no shop data.
-- **SC-003**: With a PIN on, 100% of sign-in attempts from a new device without the right PIN end with no session.
-- **SC-004**: At most 5 wrong PINs and 5 wrong passwords per account are evaluated in any 15-minute window.
-- **SC-005**: A password, PIN or emailed code cannot be read from any stored record, response or log; checks of all three find none.
+- **SC-003**: With two-step sign-in on, 100% of sign-in attempts without the right emailed code end with no session.
+- **SC-004**: At most 5 wrong tries are evaluated per emailed code, and at most 5 wrong passwords per account in any 15-minute window.
+- **SC-005**: A password or emailed code cannot be read from any stored record, response or log; checks of both find none.
 - **SC-006**: 100% of failure responses in the feature's test suite use the common error shape with a stable code and no user-facing text.
 - **SC-007**: A person who has never seen the project can import the collection and run the full journey in under 10 minutes without editing a request.
 - **SC-008**: The test identity is refused in 100% of attempts in a production configuration.
@@ -253,6 +260,8 @@ A shopkeeper with no Google account, or who prefers not to use it, signs up with
 
 - **Email delivery**: the backend sends codes through an outgoing mail service set in environment configuration, with no provider-specific code. Choosing that service is a deployment task.
 - **Any Google account**: Gmail addresses and other Google accounts are both accepted.
+- **Mailbox security**: sign-in codes are only as safe as the merchant's mailbox. Protecting it is the email provider's responsibility (owner decision, 2026-11-02).
+- **Lost mailbox**: a merchant who loses access to their email cannot receive codes. Handling that case is a support process outside this feature.
 - **Phone number is an optional contact detail**: it is not checked by SMS and is not a login, so it is not unique; two accounts can hold the same number.
 - **International numbers**: any dialing code is accepted, with no default country. The dialing-code selector is a screen, so it comes with the mobile spec.
 - **One owner, one shop**: employees and several shops per merchant are later features. The only role in this feature is owner.

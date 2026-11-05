@@ -33,10 +33,10 @@ class UserFactory extends Factory
         ]);
     }
 
-    public function withPin(string $pin): static
+    public function withTwoFactor(): static
     {
         return $this->state(fn (array $attributes) => [
-            'pin_hash' => Hash::make($pin),
+            'two_factor_enabled_at' => now(),
         ]);
     }
 }

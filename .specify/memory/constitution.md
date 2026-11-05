@@ -1,5 +1,15 @@
 <!--
 Sync Impact Report
+- Version change: 3.0.0 -> 3.1.0
+- Reason: owner decision of 2026-11-02 for spec 006: the second factor is not a PIN chosen by the merchant. When two-step sign-in is on, every sign-in emails a new one-time code to the account's address. Securing the mailbox is the email provider's responsibility.
+- Modified principles: VIII (logs: PINs replaced by passwords and one-time codes).
+- Modified constraints: authentication second factor.
+- Added sections: none.
+- Removed sections: none.
+- Dependent files updated: root CLAUDE.md, root README.md, shop-keeper-backend/CLAUDE.md, shop-keeper-backend/README.md, specs/006-auth-shop/*.
+- Follow-up TODOs: remove the PIN code from app/Modules/Identity (spec 006 tasks Phase 8).
+
+Previous report
 - Version change: 2.0.0 -> 3.0.0
 - Reason: owner decision of 2026-11-01 for spec 006: Google sign-in and email with password replace phone number plus PIN as the login, because a forgotten PIN had no recovery path and not every shopkeeper has a Google account.
 - Modified principles: none.
@@ -54,7 +64,7 @@ The merchant app is a management app for small independent shops (grocery, hardw
 Customer credit is a feature of its own, distinct from the payment method: a sale is either settled at once or put on credit, and every settlement, immediate or later, records its own payment method (cash, cheque, card, transfer). Features MUST be delivered in the roadmap order recorded in the owner's "Feuille de route — Écosystème Shop Keeper", one small specification at a time.
 
 ### VIII. Data Ownership and Privacy
-All data entered in the apps belongs to the platform operator, as stated in the terms of use accepted at sign-up, and is collected by the backend. Inside the apps, a shop MUST see only its own data, and only the owner and the employees the owner authorizes MAY see its customers and their credit. Personal data (customer names, phone numbers, credit) MUST be anonymized or aggregated before any sharing with third parties, at least to the level required by Tunisian law (INPDP), and the collection and anonymization rules MUST be reviewed by a legal advisor before any third-party sharing. Logs MUST NOT contain personal data, PINs or tokens.
+All data entered in the apps belongs to the platform operator, as stated in the terms of use accepted at sign-up, and is collected by the backend. Inside the apps, a shop MUST see only its own data, and only the owner and the employees the owner authorizes MAY see its customers and their credit. Personal data (customer names, phone numbers, credit) MUST be anonymized or aggregated before any sharing with third parties, at least to the level required by Tunisian law (INPDP), and the collection and anonymization rules MUST be reviewed by a legal advisor before any third-party sharing. Logs MUST NOT contain personal data, passwords, one-time codes or tokens.
 
 ## Additional Constraints
 
@@ -71,7 +81,7 @@ All data entered in the apps belongs to the platform operator, as stated in the 
 - Records that carry money or stock (sales, payments, customer credit entries, stock movements) MUST NOT be updated or deleted; a correction is a new record.
 - Products MUST be split between a shared catalog of products (`global_products`: barcode, name, brand, format, no price) and each shop's own products (`shop_products`: prices, stock, optional link to the shared catalog).
 - The feature formerly called "kridi" is named "customer credit" in code, API and documentation; the local word MAY be used in Arabic translations and dialect marketing.
-- Authentication MUST use Google sign-in or a verified email address with a password, with Laravel Sanctum issuing the API tokens and with rate limiting. A merchant MAY turn on a numeric PIN as a second factor. Passwords and PINs MUST be stored only as hashes. Phone-number OTP MAY be added when its operating cost is viable.
+- Authentication MUST use Google sign-in or a verified email address with a password, with Laravel Sanctum issuing the API tokens and with rate limiting. A merchant MAY turn on two-step sign-in: every sign-in then needs a new one-time code sent to the account's email address, and the merchant never chooses or remembers a code. Passwords and one-time codes MUST be stored only as hashes. Phone-number OTP MAY be added when its operating cost is viable.
 - Common shopkeeper actions MUST take three taps or fewer.
 - CSS and style declarations MUST be kept in dedicated styling files, separate from TypeScript and TSX component logic. UI work MUST favor clean, reusable components and MUST cover relevant non-happy-path states.
 - Sensitive configuration MUST be excluded from version control and secure handling MUST be used for tokens, credentials, and environment settings. Every app MUST stay deployable on any host: configuration only through environment files, no provider-specific code, and no hard-coded app name, API URL or colors outside configuration.
@@ -97,4 +107,4 @@ Amendments MUST be documented in the constitution, versioned using semantic vers
 
 All work in the repository MUST be checked against this constitution during planning, implementation, and review. If a feature violates a mandatory requirement, the work MUST be corrected before it is considered complete. Maintainers MUST preserve a durable architectural record of significant decisions and deviations that are intentionally allowed.
 
-**Version**: 3.0.0 | **Ratified**: 2026-10-10 | **Last Amended**: 2026-11-01
+**Version**: 3.1.0 | **Ratified**: 2026-10-10 | **Last Amended**: 2026-11-02

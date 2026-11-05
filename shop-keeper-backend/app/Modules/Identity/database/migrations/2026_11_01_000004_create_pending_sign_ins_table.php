@@ -13,6 +13,8 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->uuid('device_id');
             $table->char('token_hash', 64)->unique();
+            $table->string('code_hash');
+            $table->unsignedTinyInteger('failed_attempts')->default(0);
             $table->timestamp('expires_at');
             $table->timestamps();
         });

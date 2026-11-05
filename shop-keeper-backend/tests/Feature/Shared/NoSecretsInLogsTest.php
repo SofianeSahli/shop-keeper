@@ -5,6 +5,7 @@ use App\Modules\Identity\Google\GoogleIdentityChecker;
 use App\Modules\Identity\Mail\EmailCodeMail;
 use Illuminate\Database\QueryException;
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 
@@ -13,7 +14,6 @@ const JOURNEY_EMAIL = 'amira.journey@example.com';
 const JOURNEY_PHONE = '+21620123456';
 const JOURNEY_PASSWORD = 'journey secret password';
 const JOURNEY_NEW_PASSWORD = 'journey new secret password';
-const JOURNEY_PIN = '483920';
 const JOURNEY_ID_TOKEN = 'the.raw.google-id-token';
 
 function googleCheckerThrowing(Throwable $failure): GoogleIdentityChecker
@@ -61,7 +61,7 @@ it('keeps personal data and secrets out of every log entry of a journey', functi
         'device_id' => fakeDeviceId(),
     ])->assertOk()->json('data.token');
 
-    $this->withToken($session)->postJson('/api/v1/me/pin', ['pin' => JOURNEY_PIN])->assertNoContent();
+    $this->withToken($session)->postJson('/api/v1/me/two-factor')->assertNoContent();
 
     $pendingToken = $this->postJson('/api/v1/auth/email/login', [
         'email' => JOURNEY_EMAIL,
@@ -69,8 +69,17 @@ it('keeps personal data and secrets out of every log entry of a journey', functi
         'device_id' => fakeDeviceId(),
     ])->assertOk()->json('data.pending_sign_in');
 
-    $this->postJson('/api/v1/auth/pin', ['pending_sign_in' => $pendingToken, 'pin' => '000111'])->assertStatus(401);
-    $this->postJson('/api/v1/auth/pin', ['pending_sign_in' => $pendingToken, 'pin' => JOURNEY_PIN])->assertOk();
+    $this->postJson('/api/v1/auth/two-factor/resend', ['pending_sign_in' => $pendingToken])->assertStatus(202);
+    $signInCode = Mail::queued(EmailCodeMail::class)->last()->code;
+    $wrongCode = $signInCode === '111111' ? '222222' : '111111';
+
+    $this->postJson('/api/v1/auth/two-factor', ['pending_sign_in' => $pendingToken, 'code' => $wrongCode])->assertStatus(422);
+    $this->postJson('/api/v1/auth/two-factor', ['pending_sign_in' => $pendingToken, 'code' => $signInCode])->assertOk();
+
+    Auth::forgetGuards();
+    $this->withToken($session)->postJson('/api/v1/me/two-factor/disable-code')->assertStatus(202);
+    $disableCode = Mail::queued(EmailCodeMail::class)->last()->code;
+    $this->withToken($session)->deleteJson('/api/v1/me/two-factor', ['code' => $disableCode])->assertNoContent();
 
     $this->postJson('/api/v1/auth/password/forgot', ['email' => JOURNEY_EMAIL])->assertStatus(202);
     $resetCode = Mail::queued(EmailCodeMail::class)->last()->code;
@@ -88,8 +97,8 @@ it('keeps personal data and secrets out of every log entry of a journey', functi
 
     $log = implode("\n", $logged);
     $secrets = [
-        JOURNEY_NAME, JOURNEY_EMAIL, JOURNEY_PHONE, JOURNEY_PASSWORD, JOURNEY_NEW_PASSWORD, JOURNEY_PIN,
-        JOURNEY_ID_TOKEN, $confirmationCode, $resetCode, $session, $pendingToken,
+        JOURNEY_NAME, JOURNEY_EMAIL, JOURNEY_PHONE, JOURNEY_PASSWORD, JOURNEY_NEW_PASSWORD,
+        JOURNEY_ID_TOKEN, $confirmationCode, $signInCode, $disableCode, $resetCode, $session, $pendingToken,
     ];
 
     expect($logged)->toHaveCount(2);

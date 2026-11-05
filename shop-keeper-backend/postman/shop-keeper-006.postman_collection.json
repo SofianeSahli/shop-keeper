@@ -13,10 +13,7 @@
     { "key": "terms_version", "value": "2026-11", "type": "string" },
     { "key": "email_code", "value": "000000", "type": "string" },
     { "key": "password", "value": "first journey password", "type": "string" },
-    { "key": "new_password", "value": "second journey password", "type": "string" },
-    { "key": "pin", "value": "483920", "type": "string" },
-    { "key": "new_pin", "value": "507213", "type": "string" },
-    { "key": "recovered_pin", "value": "618204", "type": "string" }
+    { "key": "new_password", "value": "second journey password", "type": "string" }
   ],
   "item": [
     {
@@ -347,66 +344,40 @@
       ]
     },
     {
-      "name": "4. PIN",
+      "name": "4. Two-step sign-in",
       "item": [
         {
-          "name": "Turn on a PIN",
+          "name": "Turn on two-step sign-in",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('PIN on', () => pm.response.to.have.status(204));"]
+                "exec": ["pm.test('two-step sign-in on', () => pm.response.to.have.status(204));"]
               }
             }
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"pin\": \"{{pin}}\"\n}" },
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/api/v1/me/pin",
+              "raw": "{{base_url}}/api/v1/me/two-factor",
               "host": ["{{base_url}}"],
-              "path": ["api", "v1", "me", "pin"]
+              "path": ["api", "v1", "me", "two-factor"]
             }
           }
         },
         {
-          "name": "Change the PIN",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": ["pm.test('PIN changed', () => pm.response.to.have.status(204));"]
-              }
-            }
-          ],
-          "request": {
-            "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"current_pin\": \"{{pin}}\",\n  \"pin\": \"{{new_pin}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/v1/me/pin",
-              "host": ["{{base_url}}"],
-              "path": ["api", "v1", "me", "pin"]
-            }
-          }
-        },
-        {
-          "name": "Sign in on a new device, PIN needed",
+          "name": "Sign in on a new device, code needed",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('held for the PIN, no session', () => {",
+                  "pm.test('held for the code, no session', () => {",
                   "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.status).to.eql('pin_required');",
+                  "  pm.expect(pm.response.json().data.status).to.eql('code_required');",
                   "  pm.expect(pm.response.json().data).to.not.have.property('token');",
                   "});",
                   "pm.collectionVariables.set('pending_sign_in', pm.response.json().data.pending_sign_in);"
@@ -430,7 +401,30 @@
           }
         },
         {
-          "name": "Send the PIN",
+          "name": "Ask for a new sign-in code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('new code sent', () => pm.response.to.have.status(202));"]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"pending_sign_in\": \"{{pending_sign_in}}\"\n}" },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/two-factor/resend",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "two-factor", "resend"]
+            }
+          }
+        },
+        {
+          "name": "Send the emailed code",
           "event": [
             {
               "listen": "test",
@@ -452,59 +446,55 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"pending_sign_in\": \"{{pending_sign_in}}\",\n  \"pin\": \"{{new_pin}}\"\n}"
+              "raw": "{\n  \"pending_sign_in\": \"{{pending_sign_in}}\",\n  \"code\": \"{{email_code}}\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/auth/pin",
+              "raw": "{{base_url}}/api/v1/auth/two-factor",
               "host": ["{{base_url}}"],
-              "path": ["api", "v1", "auth", "pin"]
+              "path": ["api", "v1", "auth", "two-factor"]
             }
           }
         },
         {
-          "name": "Recover a forgotten PIN",
+          "name": "Ask for a code to turn it off",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('new PIN set', () => pm.response.to.have.status(204));"]
+                "exec": ["pm.test('code sent', () => pm.response.to.have.status(202));"]
               }
             }
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"pin\": \"{{recovered_pin}}\",\n  \"password\": \"{{new_password}}\"\n}"
-            },
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/api/v1/me/pin/recovery",
+              "raw": "{{base_url}}/api/v1/me/two-factor/disable-code",
               "host": ["{{base_url}}"],
-              "path": ["api", "v1", "me", "pin", "recovery"]
+              "path": ["api", "v1", "me", "two-factor", "disable-code"]
             }
           }
         },
         {
-          "name": "Turn off the PIN",
+          "name": "Turn off two-step sign-in",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('PIN off', () => pm.response.to.have.status(204));"]
+                "exec": ["pm.test('two-step sign-in off', () => pm.response.to.have.status(204));"]
               }
             }
           ],
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"current_pin\": \"{{recovered_pin}}\"\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{email_code}}\"\n}" },
             "url": {
-              "raw": "{{base_url}}/api/v1/me/pin",
+              "raw": "{{base_url}}/api/v1/me/two-factor",
               "host": ["{{base_url}}"],
-              "path": ["api", "v1", "me", "pin"]
+              "path": ["api", "v1", "me", "two-factor"]
             }
           }
         },
@@ -516,9 +506,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('account with its shop and no PIN', () => {",
+                  "pm.test('account with its shop, two-step sign-in off', () => {",
                   "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.pin_enabled).to.eql(false);",
+                  "  pm.expect(pm.response.json().data.two_factor_enabled).to.eql(false);",
                   "  pm.expect(pm.response.json().data.shop.id).to.eql(Number(pm.collectionVariables.get('shop_id')));",
                   "});"
                 ]

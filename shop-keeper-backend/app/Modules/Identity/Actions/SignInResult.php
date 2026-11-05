@@ -18,7 +18,7 @@ final readonly class SignInResult
         return new self(user: $user, token: $token);
     }
 
-    public static function pinRequired(string $pendingSignIn, int $expiresInSeconds): self
+    public static function codeRequired(string $pendingSignIn, int $expiresInSeconds): self
     {
         return new self(pendingSignIn: $pendingSignIn, expiresInSeconds: $expiresInSeconds);
     }

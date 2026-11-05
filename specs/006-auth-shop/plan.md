@@ -6,7 +6,7 @@
 
 ## Summary
 
-Turn the Laravel skeleton into the first real API: accounts by Google sign-in or confirmed email and password, one Sanctum token per device, an optional 6-digit PIN as second factor, one shop per merchant with strict isolation, one error format with stable codes, and a Postman collection. Backend only; `shop-keeper-mobile/` is not touched.
+Turn the Laravel skeleton into the first real API: accounts by Google sign-in or confirmed email and password, one Sanctum token per device, optional two-step sign-in with a new 6-digit code emailed at each sign-in, one shop per merchant with strict isolation, one error format with stable codes, and a Postman collection. Backend only; `shop-keeper-mobile/` is not touched.
 
 ## Technical Context
 
@@ -22,7 +22,7 @@ Turn the Laravel skeleton into the first real API: accounts by Google sign-in or
 
 **Project Type**: REST API
 
-**Performance Goals**: Ordinary API latency. PIN, password and code checks are deliberately slow hashes.
+**Performance Goals**: Ordinary API latency. Password and code checks are deliberately slow hashes.
 
 **Constraints**: Configuration only through `.env`; no provider-specific code; no personal data in logs; stable codes and no user-facing text
 
@@ -30,7 +30,7 @@ Turn the Laravel skeleton into the first real API: accounts by Google sign-in or
 
 ## Constitution Check
 
-*Version 3.0.0. Checked before research and again after design.*
+*Version 3.1.0. Checked before research and again after design, and again after the 2026-11-02 change of second factor.*
 
 | Principle | Status | How |
 |-----------|--------|-----|
@@ -42,7 +42,7 @@ Turn the Laravel skeleton into the first real API: accounts by Google sign-in or
 | VI. Offline-first | Pass | Sessions never expire, so an offline merchant stays signed in. No shop data is created in this feature. |
 | VII. Product scope | Pass | Roadmap order respected. |
 | VIII. Data and privacy | Pass | Terms acceptance recorded; each merchant sees only their shop; logs carry no personal data. |
-| Authentication constraint | Pass | Google or verified email with password, PIN as optional second factor, rate limited, hashes only. |
+| Authentication constraint | Pass | Google or verified email with password, optional emailed one-time code as second factor, rate limited, hashes only. |
 
 No violations, so Complexity Tracking is empty.
 
@@ -74,16 +74,16 @@ shop-keeper-backend/
 │       ├── Identity/
 │       │   ├── Actions/     # SignInWithGoogle, RegisterWithEmail, ConfirmEmail,
 │       │   │                # SendEmailCode, ResendEmailCode, SignInWithPassword,
-│       │   │                # FinishSignIn, ConfirmPin, IssueDeviceSession,
-│       │   │                # SignOutDevice, RequestPasswordReset, ResetPassword,
-│       │   │                # EnablePin, ChangePin, DisablePin, RecoverPin,
-│       │   │                # ResetPinByOperator
-│       │   ├── Console/     # merchant:reset-pin
+│       │   │                # FinishSignIn, ConfirmSignInCode, ResendSignInCode,
+│       │   │                # IssueDeviceSession, SignOutDevice,
+│       │   │                # RequestPasswordReset, ResetPassword,
+│       │   │                # EnableTwoFactor, SendTwoFactorDisableCode,
+│       │   │                # DisableTwoFactor
 │       │   ├── Google/      # GoogleIdentityVerifier, GoogleIdentity, TestModeVerifier
 │       │   ├── Controllers/ # controllers, form requests, resources
 │       │   ├── Mail/        # EmailCodeMail, queued
 │       │   ├── Models/      # User, EmailCode, PendingSignIn
-│       │   ├── Rules/       # NotWeakPin, InternationalPhone
+│       │   ├── Rules/       # InternationalPhone
 │       │   ├── database/migrations/
 │       │   ├── routes.php
 │       │   ├── IdentityServiceProvider.php
@@ -108,17 +108,18 @@ shop-keeper-backend/
 
 ## Design Notes
 
-- **One path to a session**: every sign-in ends in `FinishSignIn`, which calls `IssueDeviceSession`, or creates a pending sign-in when a PIN is on, so the second factor cannot be skipped on any route.
+- **One path to a session**: every sign-in ends in `FinishSignIn`, which calls `IssueDeviceSession`, or, when two-step sign-in is on, creates a pending sign-in and emails its code, so the second factor cannot be skipped on any route.
 - **Google verification**: `GoogleIdentityVerifier` is bound in the container. `TestModeVerifier` wraps it, and answers `test:<email>` only when the one test-mode check passes (research R7).
 - **Concurrency**: unique indexes on `users.email`, `users.google_id`, `shops.owner_id` and `email_codes (user_id, purpose)` are the final guard. Actions catch `UniqueConstraintViolationException` and answer as if the other request came first. Attempt counters and token replacement run under `lockForUpdate`.
 - **Tests on MySQL**: tests run on the same database engine as the app, so unique indexes, foreign keys and row locks behave as in real use.
-- **Rate limits**: named limiters on routes: sign-in and code checks 30 per minute per origin; sign-up, resend and forgot-password 10 per minute per origin and 3 per 15 minutes per address.
+- **Rate limits**: named limiters on routes: sign-in and code checks 30 per minute per origin; sign-up, resend and forgot-password 10 per minute per origin and 3 per 15 minutes per address. Sign-in code resends and the disable code use the same sending limiter, keyed by the account when the request has no email.
 - **Dependencies to justify in the PR**: `firebase/php-jwt` (research R2) and `laravel/sanctum` (constitution).
 
 ## Spec Changes Made During Planning
 
 - FR-006 and its edge cases now require Google to be authoritative for an address before linking (research R3).
 - The "email cannot be sent" edge case now retries in the background (research R6), to keep FR-037's identical answers.
+- 2026-11-02: the PIN second factor is replaced by a new one-time code emailed at each sign-in (owner decision, constitution 3.1.0, research R13). FR-013 to FR-019, User Story 3, the contract and the data model changed with it. The PIN code already written is removed in tasks Phase 8.
 
 ## Complexity Tracking
 

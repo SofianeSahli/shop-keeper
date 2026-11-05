@@ -185,7 +185,7 @@ Laravel API for the Shop Keeper ecosystem. It serves the merchant app (`shop-kee
 
 - REST under `/api/v1`, JSON only, resources for every response, cursor pagination for lists.
 - Errors use one format with a stable machine code (`stock.insufficient`, `shop.forbidden`) and no user-facing text: the mobile app translates the code into French, Arabic and English.
-- Authentication: Sanctum token per device; login by Google sign-in or verified email and password, rate limited, with an optional PIN as second factor.
+- Authentication: Sanctum token per device; login by Google sign-in or verified email and password, rate limited, with optional two-step sign-in: a new 6-digit code emailed at each sign-in, held on the pending sign-in. There is no PIN.
 - Authorization: policies on every route that touches shop data.
 - Any change to an endpoint's request or response is a contract change: update the spec's contract file and the tests in the same PR.
 
@@ -194,14 +194,15 @@ Laravel API for the Shop Keeper ecosystem. It serves the merchant app (`shop-kee
 - Every endpoint has feature tests for the success case, validation errors, unauthenticated access, and access to another shop's data.
 - Every action with a business rule has tests for that rule.
 - `docker compose exec app php artisan test` and `docker compose exec app vendor/bin/pint` must pass before a task is done.
+- The owner runs the Postman collection manually. Never run it automatically: no newman, no script, no CI step, and no task or spec that asks for it. Keep the collection in sync with the endpoints.
 
 ## Security
 
 - Secrets and environment values stay in `.env`, never in code or git.
 - `.env.example` mirrors `.env`: the same keys in the same order, with safe values. Non-secret settings get working defaults for the Docker services (MySQL database `shop_keeper`, `APP_ENV=local`); secrets (`APP_KEY`, passwords, tokens) are left empty. Starting is: copy `.env.example` to `.env`, fill `DB_PASSWORD` and `DB_ROOT_PASSWORD`, run `docker compose up -d --build`; the `setup` service installs packages, creates `APP_KEY` and runs migrations.
 - A key added to `.env` is added to `.env.example` in the same commit.
-- Store only hashes of passwords, PINs, emailed codes and invitation tokens.
-- Log no personal data (names, emails, phone numbers, passwords, PINs, codes, tokens).
+- Store only hashes of passwords, emailed codes (sign-in codes included) and invitation tokens.
+- Log no personal data (names, emails, phone numbers, passwords, codes, tokens).
 
 ## Workflow
 

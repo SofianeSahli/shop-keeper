@@ -4,6 +4,7 @@ namespace App\Modules\Identity\Mail;
 
 use App\Modules\Identity\Models\EmailCode;
 use App\Modules\Identity\Models\EmailCodePurpose;
+use App\Modules\Identity\Models\PendingSignIn;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -29,6 +30,8 @@ final class EmailCodeMail extends Mailable implements ShouldBeEncrypted, ShouldQ
         return new Envelope(subject: match ($this->purpose) {
             EmailCodePurpose::EmailConfirmation => 'Votre code de confirmation · رمز التأكيد',
             EmailCodePurpose::PasswordReset => 'Votre code de réinitialisation · رمز إعادة التعيين',
+            EmailCodePurpose::SignIn => 'Votre code de connexion · رمز تسجيل الدخول',
+            EmailCodePurpose::TwoFactorDisable => 'Votre code de désactivation · رمز إلغاء التفعيل',
         });
     }
 
@@ -36,7 +39,14 @@ final class EmailCodeMail extends Mailable implements ShouldBeEncrypted, ShouldQ
     {
         return new Content(
             text: 'identity::mail.email-code',
-            with: ['validMinutes' => EmailCode::VALID_MINUTES],
+            with: ['validMinutes' => $this->validMinutes()],
         );
+    }
+
+    private function validMinutes(): int
+    {
+        return $this->purpose === EmailCodePurpose::SignIn
+            ? PendingSignIn::VALID_MINUTES
+            : EmailCode::VALID_MINUTES;
     }
 }

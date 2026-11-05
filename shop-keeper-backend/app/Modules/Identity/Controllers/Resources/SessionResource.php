@@ -11,7 +11,7 @@ final class SessionResource extends JsonResource
     {
         if ($this->resource->pendingSignIn !== null) {
             return [
-                'status' => 'pin_required',
+                'status' => 'code_required',
                 'pending_sign_in' => $this->resource->pendingSignIn,
                 'expires_in_seconds' => $this->resource->expiresInSeconds,
             ];

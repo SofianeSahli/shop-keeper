@@ -3,7 +3,6 @@
 namespace App\Modules\Identity\Controllers\Requests;
 
 use App\Modules\Identity\Rules\InternationalPhone;
-use App\Modules\Identity\Rules\NotWeakPin;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -37,12 +36,6 @@ abstract class IdentityRequest extends FormRequest
         'code.digits' => 'code.format',
         'pending_sign_in.required' => 'pending_sign_in.required',
         'pending_sign_in.string' => 'pending_sign_in.invalid',
-        'pin.required' => 'pin.required',
-        'pin.string' => 'pin.format',
-        'pin.digits' => 'pin.format',
-        'current_pin.required' => 'current_pin.required',
-        'current_pin.string' => 'current_pin.format',
-        'current_pin.digits' => 'current_pin.format',
     ];
 
     public function messages(): array
@@ -81,14 +74,9 @@ abstract class IdentityRequest extends FormRequest
         return ['required', 'string', 'digits:6'];
     }
 
-    protected function enteredPinRules(): array
+    protected function pendingSignInRules(): array
     {
-        return ['required', 'string', 'digits:6'];
-    }
-
-    protected function newPinRules(): array
-    {
-        return ['required', new NotWeakPin];
+        return ['required', 'string'];
     }
 
     protected function phoneRules(): array
