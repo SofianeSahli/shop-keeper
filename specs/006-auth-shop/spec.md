@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-01
 
-**Status**: Draft
+**Status**: Closed on 2026-11-06 (all tasks done and merged in #10, the PIN replaced by an emailed code)
 
 **Input**: User description: "for spec 006 we need to make the auth system with shop creation system start with specify". Scope from the phase 1 roadmap in the root `CLAUDE.md`: merchant account, creation and reading of the merchant's shop, versioned REST API, consistent errors with stable codes, importable API collection, tests including cross-shop isolation. Backend only.
 

@@ -7,7 +7,7 @@ Le projet est un **monorepo** : une API Laravel, une app par acteur (aujourd'hui
 | Dossier | Rôle | Stack | État |
 |---|---|---|---|
 | [`shop-keeper-mobile/`](shop-keeper-mobile/README.md) | App du commerçant : produits, tickets, crédit client, paiements, tableau de bord | Expo 58 · React Native 0.88 · TypeScript · SQLite | 🟢 Specs 001 à 005 terminées, en local sur le téléphone |
-| [`shop-keeper-backend/`](shop-keeper-backend/README.md) | API REST : comptes, magasins, puis stock, ventes, synchronisation | Laravel 13 · PHP 8.3+ · MySQL 8 · Sanctum | 🟡 Phase 1 en cours : spec 006 (authentification et magasin) |
+| [`shop-keeper-backend/`](shop-keeper-backend/README.md) | API REST : comptes, magasins, puis stock, ventes, synchronisation | Laravel 13 · PHP 8.3+ · MySQL 8 · Sanctum | 🟡 Phase 1 en cours : spec 006 (authentification et magasin) clôturée, prochaine étape stock et catalogue |
 | [`specs/`](specs/) | Spécifications, plans et tâches (Spec Kit) | Markdown | Une spec par feature |
 
 ---
@@ -102,7 +102,7 @@ Chaque feature passe par [Spec Kit](https://github.com/github/spec-kit) : `speci
 | [`003-ledger-visual-redesign`](specs/003-ledger-visual-redesign/spec.md) | Refonte visuelle de tous les écrans | Clôturée |
 | [`004-async-feedback`](specs/004-async-feedback/spec.md) | Services asynchrones, loader, toasts, squelettes, erreurs de champ | Clôturée |
 | [`005-dark-mode`](specs/005-dark-mode/spec.md) | Thème clair et sombre | Clôturée |
-| [`006-auth-shop`](specs/006-auth-shop/spec.md) | Comptes (Google ou e-mail et mot de passe), vérification en deux étapes par code envoyé par e-mail, magasin du commerçant (backend seul, testable avec Postman) | En cours |
+| [`006-auth-shop`](specs/006-auth-shop/spec.md) | Comptes (Google ou e-mail et mot de passe), vérification en deux étapes par code envoyé par e-mail, magasin du commerçant (backend seul, testable avec Postman) | Clôturée |
 
 Chaque dossier `specs/NNN-*/` contient `spec.md` (le quoi), `plan.md` (le comment), `tasks.md` (les étapes), `data-model.md`, `research.md`, `quickstart.md` et `contracts/`.
 
@@ -125,7 +125,7 @@ shop-keeper/
 
 - [x] Socle du carnet : specs 001 à 005
 - [x] Pilote APK et pivot vers la caisse de gestion
-- [ ] 006 — Authentification et magasin (backend)
+- [x] 006 — Authentification et magasin (backend)
 - [ ] 007 — Stock, prix et catalogue commun
 - [ ] 008 — Ventes
 - [ ] 009 — Dashboard
