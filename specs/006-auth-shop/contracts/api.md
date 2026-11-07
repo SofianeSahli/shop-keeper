@@ -1,6 +1,6 @@
 # API Contract: Merchant Account and Shop
 
-Base path `/api/v1`. JSON only. Protected routes take `Authorization: Bearer <token>`. An importable Postman collection, `shop-keeper-backend/postman/shop-keeper-006.postman_collection.json`, is delivered with the implementation and must match this file. It lives in the backend so that a test running in the `app` container can compare it with the routes.
+Base path `/api/v1`. JSON only. Protected routes take `Authorization: Bearer <token>`. An importable Postman collection, `shop-keeper-backend/postman/shop-keeper.postman_collection.json` (named `shop-keeper-006…` until spec 007 made it one collection for the whole API), is delivered with the implementation and must match this file. It lives in the backend so that a test running in the `app` container can compare it with the routes.
 
 Successful responses with content wrap it in `data`: `GET /me` answers `{ "data": Account }`, and `POST /shops` and `GET /shops/{shop}` answer `{ "data": Shop }`. The 202 and 204 answers have an empty body.
 

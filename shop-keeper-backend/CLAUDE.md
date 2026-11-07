@@ -161,10 +161,11 @@ Laravel API for the Shop Keeper ecosystem. It serves the merchant app (`shop-kee
 
 ## Catalog
 
-- Products live in two tables. `global_products` is the shared catalog of Tunisian products: barcode (unique), name, brand, size or format, category; no price, no stock, no `shop_id`. `shop_products` is a shop's own product: `shop_id`, an optional `global_product_id`, sale price, cost price, stock.
+- Products live in two tables. `global_products` is the shared catalog: a translation key (`products.bread`), a status (`verified` or `pending`), an optional barcode (unique when present), later brand, format and category; no price, no stock, no `shop_id`. Its names in French, Arabic and English, plus other spellings for search, are stored in the backend with the catalog, never in the apps' translation files, so a new catalog product needs no app release. `shop_products` is a shop's own product: `shop_id`, its own name (always), an optional `global_product_id`, sale price and purchase price in millimes; stock comes with the stock-movements spec. The barcode lives only in `global_products`.
 - A merchant scans a barcode: if it is in `global_products`, the app only asks for the sale price and creates the `shop_products` row. A shop has at most one `shop_products` row per global product.
 - An unknown barcode creates a `global_products` row with status `pending`, usable at once by the shop that created it. Another shop scanning the same barcode is linked to that same row (the barcode stays unique) and types its own product name until the row is `verified`; only `verified` rows fill in the details for other shops.
-- Products without a barcode (bread, fruit and vegetables sold by weight, services) are `shop_products` with no `global_product_id`.
+- The catalog also holds the most common products without a barcode (vegetables, fruit, bread, eggs…), seeded from a catalog file by an operator command. A product without a barcode that is not in the catalog is a `shop_products` row with no `global_product_id`. In-store barcodes (13 digits starting with `2`) never enter the catalog.
+- Adding a product by name: suggestions search all three languages and other spellings, ignoring case, accents and Arabic letter variants. A creation whose name is close to an existing product is held until the merchant confirms it is different; the same name twice in one shop is refused even then (spec 007).
 - Shops never edit a `global_products` row; their own name or price stays on `shop_products`.
 - To decide later: who verifies `pending` global products (owner review queue, agreement between several shops, external source). Until then, do not build verification logic.
 

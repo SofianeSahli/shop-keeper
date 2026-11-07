@@ -43,7 +43,7 @@ Le détail est dans la feuille de route « Feuille de route — Écosystème Sho
 ```
 
 - **Offline-first.** Chaque action (vente, réception, crédit, paiement) s'écrit d'abord en SQLite et dans un journal d'opérations, avec un UUID généré par le téléphone.
-- **Synchronisation (à venir, spec 010).** Le téléphone envoie ses opérations, le serveur applique chacune une seule fois avec les mêmes règles que l'API, puis le téléphone récupère ce qui a changé.
+- **Synchronisation (à venir, spec 013).** Le téléphone envoie ses opérations, le serveur applique chacune une seule fois avec les mêmes règles que l'API, puis le téléphone récupère ce qui a changé.
 - **Catalogue commun.** Les produits tunisiens sont référencés une seule fois (`global_products`) ; chaque magasin n'ajoute que son prix et son stock (`shop_products`).
 - **Le backend fait autorité** sur la validation, les permissions et les données.
 
@@ -103,6 +103,7 @@ Chaque feature passe par [Spec Kit](https://github.com/github/spec-kit) : `speci
 | [`004-async-feedback`](specs/004-async-feedback/spec.md) | Services asynchrones, loader, toasts, squelettes, erreurs de champ | Clôturée |
 | [`005-dark-mode`](specs/005-dark-mode/spec.md) | Thème clair et sombre | Clôturée |
 | [`006-auth-shop`](specs/006-auth-shop/spec.md) | Comptes (Google ou e-mail et mot de passe), vérification en deux étapes par code envoyé par e-mail, magasin du commerçant (backend seul, testable avec Postman) | Clôturée |
+| [`007-catalog-products`](specs/007-catalog-products/spec.md) | Catalogue commun (avec et sans code-barres, noms traduits), produits du magasin et leurs prix, ajout par code-barres ou par nom, doublons bloqués (backend seul) | En cours |
 
 Chaque dossier `specs/NNN-*/` contient `spec.md` (le quoi), `plan.md` (le comment), `tasks.md` (les étapes), `data-model.md`, `research.md`, `quickstart.md` et `contracts/`.
 
@@ -126,10 +127,13 @@ shop-keeper/
 - [x] Socle du carnet : specs 001 à 005
 - [x] Pilote APK et pivot vers la caisse de gestion
 - [x] 006 — Authentification et magasin (backend)
-- [ ] 007 — Stock, prix et catalogue commun
-- [ ] 008 — Ventes
-- [ ] 009 — Dashboard
-- [ ] 010 — App connectée et synchronisation
-- [ ] 011 — Employés
-- [ ] 012 — États de caisse
-- [ ] 013 à 015 — Tout petit commerce et Play Store
+- [ ] 007 — Catalogue commun et produits du magasin
+- [ ] 008 — Vérification du catalogue
+- [ ] 009 — Fournisseurs et réceptions
+- [ ] 010 — Mouvements de stock et alertes de rupture
+- [ ] 011 — Ventes
+- [ ] 012 — Dashboard
+- [ ] 013 — App connectée et synchronisation
+- [ ] 014 — Employés
+- [ ] 015 — États de caisse
+- [ ] 016 à 018 — Tout petit commerce et Play Store

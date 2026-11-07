@@ -11,6 +11,7 @@ final class ApiException extends RuntimeException
         public readonly int $status,
         public readonly array $fields = [],
         public readonly ?int $retryAfterSeconds = null,
+        public readonly array $details = [],
     ) {
         parent::__construct($errorCode);
     }
@@ -19,8 +20,9 @@ final class ApiException extends RuntimeException
     {
         return array_filter([
             'code' => $this->errorCode,
+            ...$this->details,
             'fields' => $this->fields,
             'retry_after_seconds' => $this->retryAfterSeconds,
-        ]);
+        ], fn (mixed $value): bool => $value !== [] && $value !== null);
     }
 }
