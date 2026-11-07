@@ -1,7 +1,9 @@
 <?php
 
+use App\Modules\Catalog\Tests\Support\CatalogScenario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)
@@ -11,4 +13,12 @@ pest()->extend(TestCase::class)
 function fakeDeviceId(): string
 {
     return (string) Str::uuid();
+}
+
+function postProduct(object $test, array $fields, ?string $token = null): TestResponse
+{
+    app('auth')->forgetGuards();
+
+    return $test->withToken($token ?? $test->token)
+        ->postJson('/api/v1/products', CatalogScenario::creation($fields));
 }

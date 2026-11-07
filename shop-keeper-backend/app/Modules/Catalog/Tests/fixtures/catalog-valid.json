@@ -1,0 +1,21 @@
+[
+  {
+    "key": "products.tomato",
+    "names": { "fr": "Tomate", "ar": "طماطم", "en": "Tomato" },
+    "spellings": { "fr": ["tomates"], "ar": ["طماطة", "tmatem"], "en": [] }
+  },
+  {
+    "key": "products.bread_baguette",
+    "names": { "fr": "Baguette", "ar": "باقات", "en": "Baguette" },
+    "spellings": { "ar": ["baguette", "khobz"] }
+  },
+  {
+    "key": "products.egg",
+    "names": { "fr": "Œuf", "ar": "بيض", "en": "Egg" }
+  },
+  {
+    "key": "products.example_biscuit",
+    "barcode": "6191234567897",
+    "names": { "fr": "Biscuit exemple", "ar": "بسكويت مثال", "en": "Example biscuit" }
+  }
+]

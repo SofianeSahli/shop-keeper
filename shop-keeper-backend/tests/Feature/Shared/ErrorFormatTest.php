@@ -1,5 +1,6 @@
 <?php
 
+use App\Shared\Errors\ApiException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -90,4 +91,21 @@ it('answers a validation failure with validation.failed and a code per field', f
         'error' => ['code' => 'validation.failed', 'fields' => ['email' => ['email.required']]],
     ]);
     assertOnlyErrorEnvelope($response->json());
+});
+
+it('puts error details beside the code', function () {
+    Route::middleware('api')->get('api/v1/test/detailed', function () {
+        throw new ApiException('product.name_close', 409, details: [
+            'existing_product_id' => 'some-id',
+            'matches' => [['catalog_product' => null]],
+        ]);
+    });
+
+    $this->getJson('/api/v1/test/detailed')
+        ->assertStatus(409)
+        ->assertExactJson(['error' => [
+            'code' => 'product.name_close',
+            'existing_product_id' => 'some-id',
+            'matches' => [['catalog_product' => null]],
+        ]]);
 });

@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Catalog\database\factories\GlobalProductFactory;
+use App\Modules\Catalog\Tests\Support\CatalogScenario;
 use App\Modules\Identity\Google\GoogleIdentity;
 use App\Modules\Identity\Google\GoogleIdentityChecker;
 use App\Modules\Identity\Mail\EmailCodeMail;
@@ -8,6 +10,7 @@ use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 const JOURNEY_NAME = 'Amira Ben Salah';
 const JOURNEY_EMAIL = 'amira.journey@example.com';
@@ -105,6 +108,29 @@ it('keeps personal data and secrets out of every log entry of a journey', functi
     expect($log)->toContain('database.query_failed');
 
     foreach ($secrets as $secret) {
+        expect($log)->not->toContain($secret);
+    }
+});
+
+it('keeps product names and tokens out of the log of a product journey', function () {
+    $logged = [];
+    Event::listen(MessageLogged::class, function (MessageLogged $event) use (&$logged) {
+        $logged[] = $event->message.' '.json_encode($event->context, JSON_PARTIAL_OUTPUT_ON_ERROR);
+    });
+    ['token' => $token] = CatalogScenario::merchantWithShop();
+    $barcode = GlobalProductFactory::randomBarcode();
+    $typedName = 'Biscuit journey secret';
+    $body = CatalogScenario::creation(['barcode' => $barcode, 'name' => $typedName, 'language' => 'fr']);
+
+    $this->withToken($token)->getJson("/api/v1/catalog/barcodes/{$barcode}")->assertOk();
+    $this->withToken($token)->postJson('/api/v1/products', $body)->assertCreated();
+    $this->withToken($token)->postJson('/api/v1/products', [...$body, 'id' => (string) Str::uuid7()])->assertStatus(409);
+    $this->withToken($token)->getJson('/api/v1/products/suggestions?q=biscuit')->assertOk();
+    $this->withToken($token)->patchJson("/api/v1/products/{$body['id']}", ['sale_price' => 'not a price'])->assertStatus(422);
+
+    $log = implode("\n", $logged);
+
+    foreach ([$typedName, $token, $body['id']] as $secret) {
         expect($log)->not->toContain($secret);
     }
 });

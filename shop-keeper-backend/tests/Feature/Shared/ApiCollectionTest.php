@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 function collectionFilePath(): string
 {
-    return base_path('postman/shop-keeper-006.postman_collection.json');
+    return base_path('postman/shop-keeper.postman_collection.json');
 }
 
 function requestsInCollection(array $items): array
@@ -22,9 +22,9 @@ function requestsInCollection(array $items): array
 
 function pathOfCollectionRequest(array $request): string
 {
-    $path = str_replace('{{base_url}}/', '', $request['url']['raw']);
+    $path = strtok(str_replace('{{base_url}}/', '', $request['url']['raw']), '?');
 
-    return preg_replace('/\{\{(\w+)_id\}\}/', '{$1}', $path);
+    return preg_replace(['/\{\{(\w+)_id\}\}/', '/\{\{barcode\}\}/'], ['{$1}', '{barcode}'], $path);
 }
 
 function apiRoutes(): array
