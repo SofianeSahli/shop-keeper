@@ -125,7 +125,7 @@ src/
 ```
 Écran ─► useAsyncAction / useLedgerQuery ─► service (règles métier) ─► repository ─► runQueued ─► SQLite (async)
                                     │
-                                    └─► pending_changes   (journal pour la synchronisation, spec 010)
+                                    └─► pending_changes   (journal pour la synchronisation, spec 013)
                                     └─► ledger_audit_events (historique des corrections)
 ```
 

@@ -19,7 +19,7 @@ All tests pass, covering success, validation, unauthenticated and cross-shop cas
 
 ## Postman journey
 
-1. Import `shop-keeper-backend/postman/shop-keeper-006.postman_collection.json`.
+1. Import `shop-keeper-backend/postman/shop-keeper.postman_collection.json` (one collection for the whole API since spec 007; its first four folders are this journey).
 2. Set `base_url` to `http://localhost:8000`.
 3. Run the collection in order. Expected: every request succeeds without edits, and the session carries over by itself (SC-007).
 

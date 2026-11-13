@@ -4,7 +4,7 @@ API REST Laravel de l'écosystème Shop Keeper. Elle sert d'abord l'app du comme
 
 ← Retour au [README principal](../README.md)
 
-> **État : phase 1 en cours.** La spec **006 — Authentification et magasin** est livrée : compte du patron (connexion Google ou e-mail, vérification en deux étapes optionnelle par code envoyé par e-mail) et création de son magasin, testables avec Postman.
+> **État : phase 1 en cours.** La spec **006 — Authentification et magasin** est livrée : compte du patron (connexion Google ou e-mail, vérification en deux étapes optionnelle par code envoyé par e-mail) et création de son magasin, testables avec Postman. La spec **007 — Catalogue partagé et produits du magasin** est en cours : catalogue commun traduit en français, arabe et anglais, produits du magasin avec leurs prix, ajout par code-barres ou par nom, doublons bloqués.
 
 ---
 
@@ -46,6 +46,7 @@ Toute la configuration passe par `.env` ; aucun hébergeur n'est encore choisi. 
 | `docker compose exec app php artisan test` | Lance les tests |
 | `docker compose exec app vendor/bin/pint` | Formate le code, à lancer avant chaque commit |
 | `docker compose exec app php artisan migrate` | Applique les migrations |
+| `docker compose exec app php artisan catalog:load` | Charge ou met à jour le catalogue commun depuis `app/Modules/Catalog/database/catalog/products.json` ; relancer ne change rien, une entrée fausse arrête tout sans rien modifier |
 | `docker compose exec app composer require <paquet>` | Ajoute un paquet |
 
 ---
@@ -55,8 +56,9 @@ Toute la configuration passe par `.env` ; aucun hébergeur n'est encore choisi. 
 L'API est exposée sous `/api/v1`. Chaque spec livre une collection Postman à jour avec ses endpoints, dans [`postman/`](postman/). Un test vérifie que chaque route de l'API a sa requête dans la collection.
 
 1. Mettre `AUTH_TEST_MODE=true` dans `.env`, puis lancer `docker compose restart queue`. Ce mode remplace Google par `test:<email>` et chaque code envoyé par `000000` ; il est refusé en production.
-2. Importer `postman/shop-keeper-006.postman_collection.json` dans Postman et régler `base_url` sur `http://localhost:8000`.
-3. Lancer la collection dans l'ordre : le jeton passe d'une requête à l'autre tout seul.
+2. Charger le catalogue : `docker compose exec app php artisan catalog:load`.
+3. Importer `postman/shop-keeper.postman_collection.json` dans Postman et régler `base_url` sur `http://localhost:8000`. C'est une seule collection pour toute l'API ; elle remplace `shop-keeper-006…`.
+4. Lancer la collection dans l'ordre : le jeton, les codes-barres et les identifiants de produits passent d'une requête à l'autre tout seuls.
 
 Les erreurs ont toujours le même format, avec un code stable (par exemple `shop.forbidden`) et sans texte destiné à l'utilisateur : c'est l'app qui traduit le code.
 
@@ -72,12 +74,12 @@ app/
 └── Modules/
     ├── Identity/    # comptes, appareils, Google, e-mail, code par e-mail (006)
     ├── Shops/       # magasins                                          (006)
-    ├── Catalog/     # global_products (catalogue commun), shop_products  (007)
-    ├── Inventory/   # fournisseurs, réceptions, mouvements de stock     (007)
-    ├── Sales/       # ventes, lignes, paiements                         (008)
-    ├── Credit/      # clients, crédit client                            (008)
-    ├── Reporting/   # dashboard                                         (009)
-    └── Sync/        # envoi et récupération des opérations              (010)
+    ├── Catalog/     # global_products (catalogue commun), shop_products  (007, 008)
+    ├── Inventory/   # fournisseurs, réceptions, mouvements de stock     (009, 010)
+    ├── Sales/       # ventes, lignes, paiements                         (011)
+    ├── Credit/      # clients, crédit client                            (011)
+    ├── Reporting/   # dashboard                                         (012)
+    └── Sync/        # envoi et récupération des opérations              (013)
 ```
 
 Un module n'est créé que lorsqu'une spec en a besoin. Les numéros entre parenthèses suivent l'ordre de la feuille de route.
