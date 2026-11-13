@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-06
 
-**Status**: Draft
+**Status**: Closed on 2026-11-13 (all tasks done and merged in #11; catalog list accepted by the owner)
 
 **Input**: User description: "First part of roadmap step 1.3 (stock, prices and shared catalog), split by the owner because 1.3 is too big for one spec. A shared catalog of products, with and without barcode, whose names are translation keys translated in the backend; each shop's own products with their own name and their prices; adding a product by scanning a barcode or by typing its name with suggestions; duplicates blocked up to the last moment. Backend only."
 

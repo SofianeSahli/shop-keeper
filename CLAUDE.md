@@ -4,12 +4,12 @@ Monorepo for a Tunisian small-shop ecosystem: a management app for small indepen
 
 - `shop-keeper-mobile/` — merchant app (Expo, React Native, TypeScript). Its rules are in `shop-keeper-mobile/CLAUDE.md`; read it before any mobile change.
 - `shop-keeper-backend/` — Laravel 13 REST API. Its rules are in `shop-keeper-backend/CLAUDE.md`; read it before any backend change.
-- `specs/` — Spec Kit features. `001` to `006` are closed. Flow in `.github/skills/`: `speckit-specify` → `clarify` → `plan` → `tasks` → `analyze` → `implement`. Helper scripts are PowerShell (`.specify/scripts/powershell/`).
+- `specs/` — Spec Kit features. `001` to `007` are closed. Flow in `.github/skills/`: `speckit-specify` → `clarify` → `plan` → `tasks` → `analyze` → `implement`. Helper scripts are PowerShell (`.specify/scripts/powershell/`).
 - `.specify/memory/constitution.md` — governing rules (version 3.1.0). Read it before any change.
 
 ## Current focus
 
-Spec 007 — shared catalog and shop products (`specs/007-catalog-products/`), backend only. Roadmap step 1.3 is split: `007` catalog and shop products, `008` catalog checking, `009` suppliers and deliveries, `010` stock movements and alerts. Then sales `011`, dashboard `012`, connected app and sync `013`, employees `014`, cash shifts `015`, every small business and Play Store `016` to `018`.
+Next: spec 008 — catalog checking, not specified yet. Open question for the owner before `speckit-specify`: who checks `pending` catalog products. Roadmap step 1.3 is split: `007` catalog and shop products, `008` catalog checking, `009` suppliers and deliveries, `010` stock movements and alerts. Then sales `011`, dashboard `012`, connected app and sync `013`, employees `014`, cash shifts `015`, every small business and Play Store `016` to `018`.
 
 ## Decisions that still bind
 

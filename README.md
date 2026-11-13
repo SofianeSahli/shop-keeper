@@ -103,7 +103,7 @@ Chaque feature passe par [Spec Kit](https://github.com/github/spec-kit) : `speci
 | [`004-async-feedback`](specs/004-async-feedback/spec.md) | Services asynchrones, loader, toasts, squelettes, erreurs de champ | Clôturée |
 | [`005-dark-mode`](specs/005-dark-mode/spec.md) | Thème clair et sombre | Clôturée |
 | [`006-auth-shop`](specs/006-auth-shop/spec.md) | Comptes (Google ou e-mail et mot de passe), vérification en deux étapes par code envoyé par e-mail, magasin du commerçant (backend seul, testable avec Postman) | Clôturée |
-| [`007-catalog-products`](specs/007-catalog-products/spec.md) | Catalogue commun (avec et sans code-barres, noms traduits), produits du magasin et leurs prix, ajout par code-barres ou par nom, doublons bloqués (backend seul) | En cours |
+| [`007-catalog-products`](specs/007-catalog-products/spec.md) | Catalogue commun (avec et sans code-barres, noms traduits), produits du magasin et leurs prix, ajout par code-barres ou par nom, doublons bloqués (backend seul) | Clôturée |
 
 Chaque dossier `specs/NNN-*/` contient `spec.md` (le quoi), `plan.md` (le comment), `tasks.md` (les étapes), `data-model.md`, `research.md`, `quickstart.md` et `contracts/`.
 
@@ -127,7 +127,7 @@ shop-keeper/
 - [x] Socle du carnet : specs 001 à 005
 - [x] Pilote APK et pivot vers la caisse de gestion
 - [x] 006 — Authentification et magasin (backend)
-- [ ] 007 — Catalogue commun et produits du magasin
+- [x] 007 — Catalogue commun et produits du magasin
 - [ ] 008 — Vérification du catalogue
 - [ ] 009 — Fournisseurs et réceptions
 - [ ] 010 — Mouvements de stock et alertes de rupture
