@@ -1,5 +1,15 @@
 <!--
 Sync Impact Report
+- Version change: 3.1.0 -> 3.2.0
+- Reason: spec 008 (catalog checking): the platform operator checks the shared catalog through a review queue that shows, for each pending product, the names shops gave it and each shop's name and city. Principle IV forbade any user to reach another shop's data, operators included.
+- Modified principles: IV (shop isolation: platform operators may read the shop data needed to maintain the shared catalog, never owner contact details, never through a shop's own endpoints).
+- Modified constraints: none.
+- Added sections: none.
+- Removed sections: none.
+- Dependent files updated: root CLAUDE.md, shop-keeper-backend/CLAUDE.md, specs/008-catalog-checking/plan.md.
+- Follow-up TODOs: none.
+
+Previous report
 - Version change: 3.0.0 -> 3.1.0
 - Reason: owner decision of 2026-11-02 for spec 006: the second factor is not a PIN chosen by the merchant. When two-step sign-in is on, every sign-in emails a new one-time code to the account's address. Securing the mailbox is the email provider's responsibility.
 - Modified principles: VIII (logs: PINs replaced by passwords and one-time codes).
@@ -44,7 +54,7 @@ French MUST use left-to-right layout and Arabic MUST use right-to-left layout. L
 ### IV. Secure Backend Architecture and Authorization
 The backend MUST use Laravel and PHP with MySQL as the database. It MUST expose a documented, versioned REST API (`/api/v1`) that can be exercised with standard HTTP tools such as Postman, and it MUST validate incoming data using server-side Laravel validation, migrations, and database constraints. Controllers MUST focus on HTTP handling; business logic, permissions, and persistence MUST be separated into appropriate layers. API responses, pagination, status codes, and error handling MUST follow consistent conventions, and contract changes MUST be documented and tested.
 
-Authentication and authorization MUST remain distinct responsibilities. Laravel Sanctum MUST provide API authentication, while RBAC MUST be enforced through Laravel policies, gates, or equivalent permission checks. All protected endpoints MUST verify identity and authorization on the server, and every shop-owned record MUST be isolated by shop: a user MUST never reach another shop's data. Secrets, credentials, and environment-specific settings MUST never be committed to source control. The backend MUST run on a PHP release that includes the latest security fixes of a supported branch. Detailed backend rules live in `shop-keeper-backend/CLAUDE.md`.
+Authentication and authorization MUST remain distinct responsibilities. Laravel Sanctum MUST provide API authentication, while RBAC MUST be enforced through Laravel policies, gates, or equivalent permission checks. All protected endpoints MUST verify identity and authorization on the server, and every shop-owned record MUST be isolated by shop: a user MUST never reach another shop's data. The only exception is an account holding the platform operator role, which MAY read, through operator endpoints only, the shop data needed to maintain the shared catalog (the names shops give catalog products, and a shop's name and city); it MUST NOT read shop owners' contact details, customers, credit, sales or stock through that role. Secrets, credentials, and environment-specific settings MUST never be committed to source control. The backend MUST run on a PHP release that includes the latest security fixes of a supported branch. Detailed backend rules live in `shop-keeper-backend/CLAUDE.md`.
 
 ### V. Testability, Quality Gates, and Definition of Done
 Every feature MUST be independently testable, with the scope and depth of automated testing proportionate to the feature's risk and responsibilities. Mobile tests SHOULD cover relevant components, hooks, utilities, Redux logic, API integrations, translations, language switching, RTL/LTR behavior, accessibility labels, and permission-dependent user flows. Backend tests MUST cover each endpoint's success, validation, unauthenticated and cross-shop access cases, and SHOULD cover relevant business logic and database operations. Important mobile-to-backend workflows SHOULD be validated end-to-end where practical; testing scope MUST support reliable delivery without making exhaustive testing a prerequisite for an MVP.
@@ -107,4 +117,4 @@ Amendments MUST be documented in the constitution, versioned using semantic vers
 
 All work in the repository MUST be checked against this constitution during planning, implementation, and review. If a feature violates a mandatory requirement, the work MUST be corrected before it is considered complete. Maintainers MUST preserve a durable architectural record of significant decisions and deviations that are intentionally allowed.
 
-**Version**: 3.1.0 | **Ratified**: 2026-10-10 | **Last Amended**: 2026-11-02
+**Version**: 3.2.0 | **Ratified**: 2026-10-10 | **Last Amended**: 2026-11-16
