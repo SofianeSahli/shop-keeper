@@ -43,10 +43,13 @@ final class GoogleIdentityVerifier implements GoogleIdentityChecker
             throw $this->refusal();
         }
 
+        $email = mb_strtolower($claims->email);
+        $name = $this->savableName($claims->name ?? null);
+
         return new GoogleIdentity(
             sub: $claims->sub,
-            email: mb_strtolower($claims->email),
-            name: $this->savableName($claims->name ?? null),
+            email: $email,
+            name: $name,
             hostedDomain: $claims->hd ?? null,
         );
     }
@@ -58,7 +61,9 @@ final class GoogleIdentityVerifier implements GoogleIdentityChecker
         JWT::$leeway = self::CLOCK_SKEW_SECONDS;
 
         try {
-            return JWT::decode($idToken, JWK::parseKeySet($keys, self::SIGNING_ALGORITHM));
+            $keySet = JWK::parseKeySet($keys, self::SIGNING_ALGORITHM);
+
+            return JWT::decode($idToken, $keySet);
         } catch (UnexpectedValueException|LogicException) {
             throw $this->refusal();
         }
@@ -66,8 +71,10 @@ final class GoogleIdentityVerifier implements GoogleIdentityChecker
 
     private function hasExpectedClaims(stdClass $claims): bool
     {
+        $clientIds = config('shop_keeper.google_client_ids');
+
         return in_array($claims->iss ?? null, self::ALLOWED_ISSUERS, true)
-            && in_array($claims->aud ?? null, config('shop_keeper.google_client_ids'), true)
+            && in_array($claims->aud ?? null, $clientIds, true)
             && in_array($claims->email_verified ?? null, [true, 'true'], true)
             && is_string($claims->sub ?? null)
             && is_string($claims->email ?? null);
@@ -75,11 +82,17 @@ final class GoogleIdentityVerifier implements GoogleIdentityChecker
 
     private function savableName(mixed $name): ?string
     {
-        if (! is_string($name) || trim($name) === '') {
+        if (! is_string($name)) {
             return null;
         }
 
-        return mb_substr(trim($name), 0, self::NAME_MAX_LENGTH);
+        $trimmedName = trim($name);
+
+        if ($trimmedName === '') {
+            return null;
+        }
+
+        return mb_substr($trimmedName, 0, self::NAME_MAX_LENGTH);
     }
 
     private function signingKeys(): array
@@ -108,7 +121,9 @@ final class GoogleIdentityVerifier implements GoogleIdentityChecker
 
     private function cacheForGooglesMaxAge(array $keys, Response $response): void
     {
-        if (preg_match('/max-age=(\d+)/', (string) $response->header('Cache-Control'), $maxAge) === 1) {
+        $cacheControl = (string) $response->header('Cache-Control');
+
+        if (preg_match('/max-age=(\d+)/', $cacheControl, $maxAge) === 1) {
             Cache::put(self::KEYS_CACHE_KEY, $keys, (int) $maxAge[1]);
         }
     }

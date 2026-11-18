@@ -9,10 +9,11 @@ final class EnableTwoFactor
 {
     public function handle(User $user): void
     {
+        $enabledAt = now();
         $turnedOn = User::query()
             ->whereKey($user->id)
             ->whereNull('two_factor_enabled_at')
-            ->update(['two_factor_enabled_at' => now()]);
+            ->update(['two_factor_enabled_at' => $enabledAt]);
 
         if ($turnedOn === 0) {
             throw new ApiException('two_factor.already_enabled', 409);

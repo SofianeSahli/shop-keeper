@@ -11,7 +11,8 @@ trait HasBinaryUuidKey
     {
         $this->incrementing = false;
         $this->keyType = 'string';
-        $this->mergeCasts([$this->getKeyName() => BinaryUuid::class]);
+        $keyName = $this->getKeyName();
+        $this->mergeCasts([$keyName => BinaryUuid::class]);
     }
 
     public function getKey(): mixed
@@ -27,6 +28,8 @@ trait HasBinaryUuidKey
             return;
         }
 
-        $query->where($this->getKeyName(), BinaryUuid::toBytes($uuid));
+        $keyName = $this->getKeyName();
+        $uuidBytes = BinaryUuid::toBytes($uuid);
+        $query->where($keyName, $uuidBytes);
     }
 }

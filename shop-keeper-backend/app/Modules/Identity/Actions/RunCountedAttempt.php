@@ -20,7 +20,10 @@ final class RunCountedAttempt
             $lockedUntil = $lockedRow->password_locked_until;
 
             if ($lockedUntil?->isFuture()) {
-                throw new ApiException('auth.password_locked', 429, retryAfterSeconds: (int) ceil(now()->diffInSeconds($lockedUntil)));
+                $secondsLeft = now()->diffInSeconds($lockedUntil);
+                $roundedSecondsLeft = (int) ceil($secondsLeft);
+
+                throw new ApiException('auth.password_locked', 429, retryAfterSeconds: $roundedSecondsLeft);
             }
 
             $passed = $isRight($lockedRow);

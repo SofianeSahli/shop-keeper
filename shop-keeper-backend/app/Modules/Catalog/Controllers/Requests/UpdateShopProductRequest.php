@@ -51,12 +51,18 @@ final class UpdateShopProductRequest extends FormRequest
 
     public function changes(): ShopProductChanges
     {
+        $name = $this->validated('name');
+        $salePrice = $this->validated('sale_price');
+        $changesPurchasePrice = $this->has('purchase_price');
+        $purchasePrice = $this->validated('purchase_price');
+        $confirmedDifferent = $this->boolean('confirm_different');
+
         return new ShopProductChanges(
-            name: $this->validated('name'),
-            salePrice: $this->validated('sale_price'),
-            changesPurchasePrice: $this->has('purchase_price'),
-            purchasePrice: $this->validated('purchase_price'),
-            confirmedDifferent: $this->boolean('confirm_different'),
+            name: $name,
+            salePrice: $salePrice,
+            changesPurchasePrice: $changesPurchasePrice,
+            purchasePrice: $purchasePrice,
+            confirmedDifferent: $confirmedDifferent,
         );
     }
 }

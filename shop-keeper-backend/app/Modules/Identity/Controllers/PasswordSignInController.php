@@ -10,10 +10,11 @@ final class PasswordSignInController
 {
     public function __invoke(PasswordSignInRequest $request, SignInWithPassword $signInWithPassword): SessionResource
     {
-        return new SessionResource($signInWithPassword->handle(
-            $request->validated('email'),
-            $request->validated('password'),
-            $request->validated('device_id'),
-        ));
+        $email = $request->validated('email');
+        $password = $request->validated('password');
+        $deviceId = $request->validated('device_id');
+        $signIn = $signInWithPassword->handle($email, $password, $deviceId);
+
+        return new SessionResource($signIn);
     }
 }

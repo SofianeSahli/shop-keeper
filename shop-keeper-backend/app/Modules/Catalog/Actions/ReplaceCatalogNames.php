@@ -33,11 +33,12 @@ final class ReplaceCatalogNames
 
     private function addTerm(GlobalProduct $product, string $language, CatalogTermKind $kind, string $term): void
     {
+        $comparedTerm = NameComparison::compared($term);
         $product->terms()->create([
             'language' => $language,
             'kind' => $kind,
             'term' => $term,
-            'compared' => NameComparison::compared($term),
+            'compared' => $comparedTerm,
         ]);
     }
 }

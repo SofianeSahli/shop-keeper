@@ -11,6 +11,7 @@ final class SpendTimeOfSendingCode
 
     public function handle(): void
     {
-        Hash::make(Str::random(self::THROWAWAY_LENGTH));
+        $throwawayCode = Str::random(self::THROWAWAY_LENGTH);
+        Hash::make($throwawayCode);
     }
 }

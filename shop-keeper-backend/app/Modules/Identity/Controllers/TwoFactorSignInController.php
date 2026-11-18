@@ -13,15 +13,17 @@ final class TwoFactorSignInController
 {
     public function confirm(ConfirmSignInCodeRequest $request, ConfirmSignInCode $confirmSignInCode): SessionResource
     {
-        return new SessionResource($confirmSignInCode->handle(
-            $request->validated('pending_sign_in'),
-            $request->validated('code'),
-        ));
+        $pendingToken = $request->validated('pending_sign_in');
+        $code = $request->validated('code');
+        $signIn = $confirmSignInCode->handle($pendingToken, $code);
+
+        return new SessionResource($signIn);
     }
 
     public function resend(ResendSignInCodeRequest $request, ResendSignInCode $resendSignInCode): Response
     {
-        $resendSignInCode->handle($request->validated('pending_sign_in'));
+        $pendingToken = $request->validated('pending_sign_in');
+        $resendSignInCode->handle($pendingToken);
 
         return response()->noContent(Response::HTTP_ACCEPTED);
     }

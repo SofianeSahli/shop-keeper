@@ -13,9 +13,11 @@ final class FindOrCreatePendingProduct
 {
     public function handle(Barcode $barcode, string $typedName, CatalogLanguage $typedLanguage): GlobalProduct
     {
+        $pendingKey = GlobalProduct::pendingKeyFor($barcode->value);
+
         try {
             return DB::transaction(fn (): GlobalProduct => GlobalProduct::query()->create([
-                'translation_key' => GlobalProduct::pendingKeyFor($barcode->value),
+                'translation_key' => $pendingKey,
                 'status' => CatalogStatus::Pending,
                 'barcode' => $barcode->value,
                 'pending_name' => $typedName,

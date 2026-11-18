@@ -38,11 +38,9 @@ final class ConfirmSignInCode
         }
 
         $pendingSignIn->delete();
+        $deviceToken = $this->issueDeviceSession->handle($pendingSignIn->user, $pendingSignIn->device_id);
 
-        return SignInResult::signedIn(
-            $pendingSignIn->user,
-            $this->issueDeviceSession->handle($pendingSignIn->user, $pendingSignIn->device_id),
-        );
+        return SignInResult::signedIn($pendingSignIn->user, $deviceToken);
     }
 
     private function countWrongTry(PendingSignIn $pendingSignIn): ApiException

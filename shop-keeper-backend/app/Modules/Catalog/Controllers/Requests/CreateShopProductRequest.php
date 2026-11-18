@@ -46,19 +46,28 @@ final class CreateShopProductRequest extends FormRequest
 
     public function newShopProduct(int $shopId): NewShopProduct
     {
+        $id = $this->validated('id');
+        $lowercaseId = strtolower($id);
         $barcode = $this->validated('barcode');
+        $parsedBarcode = $barcode === null ? null : Barcode::parse($barcode);
         $language = $this->validated('language');
+        $catalogLanguage = $language === null ? null : CatalogLanguage::from($language);
+        $catalogProductId = $this->validated('catalog_product_id');
+        $name = $this->validated('name');
+        $salePrice = $this->validated('sale_price');
+        $purchasePrice = $this->validated('purchase_price');
+        $confirmedDifferent = $this->boolean('confirm_different');
 
         return new NewShopProduct(
-            id: strtolower($this->validated('id')),
+            id: $lowercaseId,
             shopId: $shopId,
-            barcode: $barcode === null ? null : Barcode::parse($barcode),
-            catalogProductId: $this->validated('catalog_product_id'),
-            name: $this->validated('name'),
-            language: $language === null ? null : CatalogLanguage::from($language),
-            salePrice: $this->validated('sale_price'),
-            purchasePrice: $this->validated('purchase_price'),
-            confirmedDifferent: $this->boolean('confirm_different'),
+            barcode: $parsedBarcode,
+            catalogProductId: $catalogProductId,
+            name: $name,
+            language: $catalogLanguage,
+            salePrice: $salePrice,
+            purchasePrice: $purchasePrice,
+            confirmedDifferent: $confirmedDifferent,
         );
     }
 }

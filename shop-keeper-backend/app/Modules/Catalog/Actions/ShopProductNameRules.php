@@ -18,10 +18,8 @@ final class ShopProductNameRules
 
     public function refuseIfAlreadyInShop(int $shopId, GlobalProduct $catalogProduct, bool $readLatest = false): void
     {
-        $existing = $this->latest(
-            ShopProduct::query()->ofShop($shopId)->where('global_product_id', $catalogProduct->id),
-            $readLatest,
-        )->first();
+        $productsOfCatalogProduct = ShopProduct::query()->ofShop($shopId)->where('global_product_id', $catalogProduct->id);
+        $existing = $this->latest($productsOfCatalogProduct, $readLatest)->first();
 
         if ($existing !== null) {
             throw $this->duplicate('product.already_in_shop', $existing);
@@ -30,13 +28,12 @@ final class ShopProductNameRules
 
     public function refuseIfNameTaken(int $shopId, string $name, ?string $exceptProductId = null, bool $readLatest = false): void
     {
-        $existing = $this->latest(
-            ShopProduct::query()
-                ->ofShop($shopId)
-                ->where('identity_key', NameComparison::identityKey($name))
-                ->when($exceptProductId !== null, fn (Builder $query) => $query->whereNot(fn (Builder $excluded) => $excluded->whereUuid($exceptProductId))),
-            $readLatest,
-        )->first();
+        $identityKey = NameComparison::identityKey($name);
+        $productsWithName = ShopProduct::query()
+            ->ofShop($shopId)
+            ->where('identity_key', $identityKey)
+            ->when($exceptProductId !== null, fn (Builder $query) => $query->whereNot(fn (Builder $excluded) => $excluded->whereUuid($exceptProductId)));
+        $existing = $this->latest($productsWithName, $readLatest)->first();
 
         if ($existing !== null) {
             throw $this->duplicate('product.name_taken', $existing);
@@ -52,12 +49,12 @@ final class ShopProductNameRules
         $matches = $this->findCloseProducts->handle($shopId, $name, $renamedProduct);
 
         if ($matches !== []) {
-            throw new ApiException('product.name_close', self::CONFLICT_STATUS, details: [
-                'matches' => array_map(
-                    fn (ProductMatch $match): array => (new SuggestionResource($match))->resolve(),
-                    $matches,
-                ),
-            ]);
+            $resolvedMatches = array_map(
+                fn (ProductMatch $match): array => (new SuggestionResource($match))->resolve(),
+                $matches,
+            );
+
+            throw new ApiException('product.name_close', self::CONFLICT_STATUS, details: ['matches' => $resolvedMatches]);
         }
     }
 
@@ -68,6 +65,8 @@ final class ShopProductNameRules
 
     private function duplicate(string $code, ShopProduct $existing): ApiException
     {
-        return new ApiException($code, self::CONFLICT_STATUS, details: ['existing_product_id' => $existing->uuid()]);
+        $existingProductId = $existing->uuid();
+
+        return new ApiException($code, self::CONFLICT_STATUS, details: ['existing_product_id' => $existingProductId]);
     }
 }

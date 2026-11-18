@@ -55,7 +55,9 @@ final class LoadCatalogFile
             try {
                 $entry = CatalogFileEntry::fromArray($rawEntry);
             } catch (CatalogFileError $error) {
-                throw $error->at($position, CatalogFileEntry::keyOf($rawEntry));
+                $entryKey = CatalogFileEntry::keyOf($rawEntry);
+
+                throw $error->at($position, $entryKey);
             }
 
             if (isset($positionsByKey[$entry->key])) {
@@ -85,9 +87,11 @@ final class LoadCatalogFile
     private function targetsInDatabase(array $entries): array
     {
         $entryList = collect($entries);
-        $byKey = GlobalProduct::query()->whereIn('translation_key', $entryList->pluck('key'))->get()->keyBy('translation_key');
+        $keys = $entryList->pluck('key');
+        $barcodes = $entryList->pluck('barcode.value')->filter();
+        $byKey = GlobalProduct::query()->whereIn('translation_key', $keys)->get()->keyBy('translation_key');
         $byBarcode = GlobalProduct::query()
-            ->whereIn('barcode', $entryList->pluck('barcode.value')->filter())
+            ->whereIn('barcode', $barcodes)
             ->get()
             ->keyBy('barcode');
 
@@ -184,16 +188,19 @@ final class LoadCatalogFile
             ->orderBy('id')
             ->get()
             ->groupBy('language');
+        $noSpellings = collect();
 
         return $this->byLanguage(fn (string $language): array => $spellings
-            ->get($language, collect())
+            ->get($language, $noSpellings)
             ->map(fn (GlobalProductTerm $term): string => $term->term)
             ->all());
     }
 
     private function byLanguage(callable $valueOf): array
     {
-        return collect(CatalogLanguage::cases())
+        $languages = CatalogLanguage::cases();
+
+        return collect($languages)
             ->mapWithKeys(fn (CatalogLanguage $language): array => [$language->value => $valueOf($language->value)])
             ->all();
     }

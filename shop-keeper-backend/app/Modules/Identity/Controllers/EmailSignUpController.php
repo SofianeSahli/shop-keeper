@@ -15,29 +15,30 @@ final class EmailSignUpController
 {
     public function register(RegisterRequest $request, RegisterWithEmail $registerWithEmail): Response
     {
-        $registerWithEmail->handle(
-            $request->validated('name'),
-            $request->validated('email'),
-            $request->validated('password'),
-            $request->validated('terms_version'),
-            $request->normalizedPhone(),
-        );
+        $name = $request->validated('name');
+        $email = $request->validated('email');
+        $password = $request->validated('password');
+        $termsVersion = $request->validated('terms_version');
+        $phone = $request->normalizedPhone();
+        $registerWithEmail->handle($name, $email, $password, $termsVersion, $phone);
 
         return response()->noContent(Response::HTTP_ACCEPTED);
     }
 
     public function confirm(ConfirmEmailRequest $request, ConfirmEmail $confirmEmail): SessionResource
     {
-        return new SessionResource($confirmEmail->handle(
-            $request->validated('email'),
-            $request->validated('code'),
-            $request->validated('device_id'),
-        ));
+        $email = $request->validated('email');
+        $code = $request->validated('code');
+        $deviceId = $request->validated('device_id');
+        $signIn = $confirmEmail->handle($email, $code, $deviceId);
+
+        return new SessionResource($signIn);
     }
 
     public function resend(EmailAddressRequest $request, ResendEmailCode $resendEmailCode): Response
     {
-        $resendEmailCode->handle($request->validated('email'));
+        $email = $request->validated('email');
+        $resendEmailCode->handle($email);
 
         return response()->noContent(Response::HTTP_ACCEPTED);
     }

@@ -69,14 +69,17 @@ final class SignInWithGoogle
             throw new ApiException('auth.terms_required', 422);
         }
 
+        $name = $identity->nameForNewAccount();
+        $createdAt = now();
+
         return User::query()->create([
-            'name' => $identity->nameForNewAccount(),
+            'name' => $name,
             'email' => $identity->email,
-            'email_verified_at' => now(),
+            'email_verified_at' => $createdAt,
             'google_id' => $identity->sub,
             'phone' => $phone,
             'terms_version' => $termsVersion,
-            'terms_accepted_at' => now(),
+            'terms_accepted_at' => $createdAt,
         ]);
     }
 

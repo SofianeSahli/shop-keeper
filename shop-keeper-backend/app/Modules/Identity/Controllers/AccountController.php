@@ -9,6 +9,8 @@ final class AccountController
 {
     public function show(Request $request): AccountResource
     {
-        return new AccountResource($request->user());
+        $user = $request->user();
+
+        return new AccountResource($user);
     }
 }
