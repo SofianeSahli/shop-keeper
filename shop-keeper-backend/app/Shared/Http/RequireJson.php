@@ -27,6 +27,12 @@ final class RequireJson
 
     private function hasValidJsonBody(Request $request): bool
     {
-        return $request->isJson() && json_validate($request->getContent());
+        if (! $request->isJson()) {
+            return false;
+        }
+
+        $content = $request->getContent();
+
+        return json_validate($content);
     }
 }

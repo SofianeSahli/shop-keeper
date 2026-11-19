@@ -53,12 +53,12 @@ Toute la configuration passe par `.env` ; aucun hébergeur n'est encore choisi. 
 
 ## Tester avec Postman
 
-L'API est exposée sous `/api/v1`. Chaque spec livre une collection Postman à jour avec ses endpoints, dans [`postman/`](postman/). Un test vérifie que chaque route de l'API a sa requête dans la collection.
+L'API est exposée sous `/api/v1`. La collection Postman et son environnement sont dans [`postman/`](postman/). La collection contient exactement une requête par route de l'API, sans doublon ; un test le vérifie, et vérifie aussi que chaque variable utilisée est définie dans l'environnement.
 
 1. Mettre `AUTH_TEST_MODE=true` dans `.env`, puis lancer `docker compose restart queue`. Ce mode remplace Google par `test:<email>` et chaque code envoyé par `000000` ; il est refusé en production.
 2. Charger le catalogue : `docker compose exec app php artisan catalog:load`.
-3. Importer `postman/shop-keeper.postman_collection.json` dans Postman et régler `base_url` sur `http://localhost:8000`. C'est une seule collection pour toute l'API ; elle remplace `shop-keeper-006…`.
-4. Lancer la collection dans l'ordre : le jeton, les codes-barres et les identifiants de produits passent d'une requête à l'autre tout seuls.
+3. Importer dans Postman `postman/shop-keeper.postman_collection.json` et `postman/shop-keeper.postman_environment.json`, puis choisir l'environnement « Shop Keeper local ». Toutes les valeurs (`base_url`, mots de passe, nom du magasin, recherche…) se règlent dans l'environnement.
+4. La première fois, lancer les dossiers dans l'ordre : le jeton, les e-mails, les appareils, le code-barres et les identifiants sont enregistrés dans l'environnement. Ensuite, chaque requête peut être renvoyée seule.
 
 Les erreurs ont toujours le même format, avec un code stable (par exemple `shop.forbidden`) et sans texte destiné à l'utilisateur : c'est l'app qui traduit le code.
 

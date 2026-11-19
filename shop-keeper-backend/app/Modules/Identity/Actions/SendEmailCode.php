@@ -16,19 +16,22 @@ final class SendEmailCode
     public function handle(User $user, EmailCodePurpose $purpose): void
     {
         $code = $this->generateEmailCode->handle();
+        $codeHash = Hash::make($code);
+        $expiresAt = now()->addMinutes(EmailCode::VALID_MINUTES);
 
         EmailCode::query()->upsert(
             [[
                 'user_id' => $user->id,
                 'purpose' => $purpose->value,
-                'code_hash' => Hash::make($code),
+                'code_hash' => $codeHash,
                 'failed_attempts' => 0,
-                'expires_at' => now()->addMinutes(EmailCode::VALID_MINUTES),
+                'expires_at' => $expiresAt,
             ]],
             ['user_id', 'purpose'],
             ['code_hash', 'failed_attempts', 'expires_at'],
         );
 
-        Mail::to($user->email)->queue(new EmailCodeMail($code, $purpose));
+        $mail = new EmailCodeMail($code, $purpose);
+        Mail::to($user->email)->queue($mail);
     }
 }

@@ -19,6 +19,8 @@ final class BarcodeController
             throw ValidationException::withMessages(['barcode' => [$failure->fieldCode]]);
         }
 
-        return new BarcodeLookupResource($lookUpBarcode->handle($currentShop->shopId, $parsedBarcode));
+        $lookup = $lookUpBarcode->handle($currentShop->shopId, $parsedBarcode);
+
+        return new BarcodeLookupResource($lookup);
     }
 }

@@ -18,7 +18,15 @@ final class InternationalPhone implements ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (! is_string($value) || preg_match(self::E164_PATTERN, self::normalize($value)) !== 1) {
+        if (! is_string($value)) {
+            $fail('phone.invalid');
+
+            return;
+        }
+
+        $normalizedPhone = self::normalize($value);
+
+        if (preg_match(self::E164_PATTERN, $normalizedPhone) !== 1) {
             $fail('phone.invalid');
         }
     }

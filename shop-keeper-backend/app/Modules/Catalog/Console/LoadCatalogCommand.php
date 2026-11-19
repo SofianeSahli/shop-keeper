@@ -16,17 +16,20 @@ final class LoadCatalogCommand extends Command
 
     public function handle(LoadCatalogFile $loadCatalogFile): int
     {
-        $path = base_path($this->argument('file') ?? self::DEFAULT_FILE);
+        $file = $this->argument('file') ?? self::DEFAULT_FILE;
+        $path = base_path($file);
 
         try {
             $result = $loadCatalogFile->handle($path);
         } catch (CatalogFileError $error) {
-            $this->error('Catalog not loaded, nothing changed. '.$error->describe());
+            $errorDescription = $error->describe();
+            $this->error('Catalog not loaded, nothing changed. '.$errorDescription);
 
             return self::FAILURE;
         }
 
-        $this->info(sprintf('Catalog loaded: %d added, %d updated, %d unchanged.', $result->added, $result->updated, $result->unchanged));
+        $summary = sprintf('Catalog loaded: %d added, %d updated, %d unchanged.', $result->added, $result->updated, $result->unchanged);
+        $this->info($summary);
 
         return self::SUCCESS;
     }

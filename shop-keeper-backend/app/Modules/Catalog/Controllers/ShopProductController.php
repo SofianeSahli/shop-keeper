@@ -20,20 +20,22 @@ final class ShopProductController
 {
     public function index(ListProductsRequest $request, CurrentShop $currentShop): AnonymousResourceCollection
     {
-        return ShopProductResource::collection(
-            ShopProduct::query()
-                ->ofShop($currentShop->shopId)
-                ->with('globalProduct.names')
-                ->orderBy('compared_name')
-                ->orderBy('identity_key')
-                ->cursorPaginate($request->pageSize())
-                ->withQueryString(),
-        );
+        $pageSize = $request->pageSize();
+        $products = ShopProduct::query()
+            ->ofShop($currentShop->shopId)
+            ->with('globalProduct.names')
+            ->orderBy('compared_name')
+            ->orderBy('identity_key')
+            ->cursorPaginate($pageSize)
+            ->withQueryString();
+
+        return ShopProductResource::collection($products);
     }
 
     public function store(CreateShopProductRequest $request, CurrentShop $currentShop, CreateShopProduct $createShopProduct): JsonResponse
     {
-        $created = $createShopProduct->handle($request->newShopProduct($currentShop->shopId));
+        $newShopProduct = $request->newShopProduct($currentShop->shopId);
+        $created = $createShopProduct->handle($newShopProduct);
 
         return (new ShopProductResource($created->product))
             ->response()
@@ -57,7 +59,10 @@ final class ShopProductController
         $foundProduct = $this->productOfShop($currentShop, $product);
         Gate::authorize('update', $foundProduct);
 
-        return new ShopProductResource($updateShopProduct->handle($foundProduct, $request->changes()));
+        $changes = $request->changes();
+        $updatedProduct = $updateShopProduct->handle($foundProduct, $changes);
+
+        return new ShopProductResource($updatedProduct);
     }
 
     private function productOfShop(CurrentShop $currentShop, string $productId): ShopProduct

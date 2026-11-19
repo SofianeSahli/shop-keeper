@@ -18,13 +18,15 @@ final class RequireShop
 
     public function handle(Request $request, Closure $next): Response
     {
-        $shopId = $this->findShopIdOfOwner->handle($request->user()->id);
+        $ownerId = $request->user()->id;
+        $shopId = $this->findShopIdOfOwner->handle($ownerId);
 
         if ($shopId === null) {
             throw new ApiException('shop.required', 403);
         }
 
-        $this->container->instance(CurrentShop::class, new CurrentShop($shopId));
+        $currentShop = new CurrentShop($shopId);
+        $this->container->instance(CurrentShop::class, $currentShop);
 
         return $next($request);
     }

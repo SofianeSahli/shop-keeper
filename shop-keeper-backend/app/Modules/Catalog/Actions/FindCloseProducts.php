@@ -27,15 +27,19 @@ final class FindCloseProducts
             return [];
         }
 
-        $scoredMatches = collect([
-            ...$this->catalogCandidates($shopId, $compared, $renamedProduct?->global_product_id),
-            ...$this->shopCandidates($shopId, $compared, $renamedProduct),
-        ]);
+        $catalogCandidates = $this->catalogCandidates($shopId, $compared, $renamedProduct?->global_product_id);
+        $shopCandidates = $this->shopCandidates($shopId, $compared, $renamedProduct);
+        $scoredMatches = collect([...$catalogCandidates, ...$shopCandidates]);
 
         return $this->bestPerProduct($scoredMatches)
             ->sortBy([
                 fn (array $first, array $second): int => $first['score']->compare($second['score']),
-                fn (array $first, array $second): int => strcmp($first['match']->displayName(), $second['match']->displayName()),
+                function (array $first, array $second): int {
+                    $firstName = $first['match']->displayName();
+                    $secondName = $second['match']->displayName();
+
+                    return strcmp($firstName, $secondName);
+                },
             ])
             ->take(self::MAX_CLOSE_MATCHES)
             ->map(fn (array $scored): ProductMatch => $scored['match'])
@@ -45,40 +49,49 @@ final class FindCloseProducts
 
     private function catalogCandidates(int $shopId, string $compared, ?int $excludedCatalogProductId): array
     {
+        $verifiedCatalogIds = GlobalProduct::query()->select('id')->where('status', CatalogStatus::Verified);
         $terms = GlobalProductTerm::query()
-            ->whereIn('global_product_id', GlobalProduct::query()->select('id')->where('status', CatalogStatus::Verified))
+            ->whereIn('global_product_id', $verifiedCatalogIds)
             ->when($excludedCatalogProductId !== null, fn (Builder $query) => $query->where('global_product_id', '!=', $excludedCatalogProductId))
             ->where(fn (Builder $query) => $this->narrowToPossiblyClose($query, 'compared', $compared))
             ->with('globalProduct.names')
             ->get();
 
+        $catalogIds = $terms->pluck('global_product_id')->unique();
         $shopProductsByCatalogId = ShopProduct::query()
             ->ofShop($shopId)
-            ->whereIn('global_product_id', $terms->pluck('global_product_id')->unique())
+            ->whereIn('global_product_id', $catalogIds)
             ->get()
             ->keyBy('global_product_id');
 
         return $terms
-            ->map(fn (GlobalProductTerm $term): ?array => $this->scored(
-                new ProductMatch($term->globalProduct, $shopProductsByCatalogId->get($term->global_product_id)),
-                CloseScore::between($compared, $term->compared),
-            ))
+            ->map(function (GlobalProductTerm $term) use ($compared, $shopProductsByCatalogId): ?array {
+                $shopProduct = $shopProductsByCatalogId->get($term->global_product_id);
+                $match = new ProductMatch($term->globalProduct, $shopProduct);
+                $score = CloseScore::between($compared, $term->compared);
+
+                return $this->scored($match, $score);
+            })
             ->filter()
             ->all();
     }
 
     private function shopCandidates(int $shopId, string $compared, ?ShopProduct $renamedProduct): array
     {
+        $renamedProductId = $renamedProduct?->uuid();
+
         return ShopProduct::query()
             ->ofShop($shopId)
-            ->when($renamedProduct !== null, fn (Builder $query) => $query->whereNot(fn (Builder $excluded) => $excluded->whereUuid($renamedProduct->uuid())))
+            ->when($renamedProductId !== null, fn (Builder $query) => $query->whereNot(fn (Builder $excluded) => $excluded->whereUuid($renamedProductId)))
             ->where(fn (Builder $query) => $this->narrowToPossiblyClose($query, 'compared_name', $compared))
             ->with('globalProduct.names')
             ->get()
-            ->map(fn (ShopProduct $product): ?array => $this->scored(
-                ProductMatch::ofShopProduct($product),
-                CloseScore::between($compared, $product->compared_name),
-            ))
+            ->map(function (ShopProduct $product) use ($compared): ?array {
+                $match = ProductMatch::ofShopProduct($product);
+                $score = CloseScore::between($compared, $product->compared_name);
+
+                return $this->scored($match, $score);
+            })
             ->filter()
             ->all();
     }

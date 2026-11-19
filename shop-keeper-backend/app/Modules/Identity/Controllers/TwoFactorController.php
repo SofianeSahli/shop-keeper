@@ -13,21 +13,25 @@ final class TwoFactorController
 {
     public function store(Request $request, EnableTwoFactor $enableTwoFactor): Response
     {
-        $enableTwoFactor->handle($request->user());
+        $user = $request->user();
+        $enableTwoFactor->handle($user);
 
         return response()->noContent();
     }
 
     public function sendDisableCode(Request $request, SendTwoFactorDisableCode $sendTwoFactorDisableCode): Response
     {
-        $sendTwoFactorDisableCode->handle($request->user());
+        $user = $request->user();
+        $sendTwoFactorDisableCode->handle($user);
 
         return response()->noContent(Response::HTTP_ACCEPTED);
     }
 
     public function destroy(DisableTwoFactorRequest $request, DisableTwoFactor $disableTwoFactor): Response
     {
-        $disableTwoFactor->handle($request->user(), $request->validated('code'));
+        $user = $request->user();
+        $code = $request->validated('code');
+        $disableTwoFactor->handle($user, $code);
 
         return response()->noContent();
     }

@@ -18,6 +18,8 @@ final class GenerateEmailCode
             return self::TEST_MODE_CODE;
         }
 
-        return str_pad((string) random_int(0, self::LARGEST_CODE), self::CODE_LENGTH, '0', STR_PAD_LEFT);
+        $randomNumber = random_int(0, self::LARGEST_CODE);
+
+        return str_pad((string) $randomNumber, self::CODE_LENGTH, '0', STR_PAD_LEFT);
     }
 }

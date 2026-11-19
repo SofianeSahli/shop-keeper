@@ -8,7 +8,8 @@ final class CodePointDistance
     {
         $firstCharacters = mb_str_split($first);
         $secondCharacters = mb_str_split($second);
-        $previousRow = range(0, count($secondCharacters));
+        $secondLength = count($secondCharacters);
+        $previousRow = range(0, $secondLength);
 
         foreach ($firstCharacters as $firstIndex => $firstCharacter) {
             $currentRow = [$firstIndex + 1];
