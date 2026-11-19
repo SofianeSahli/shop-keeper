@@ -5,7 +5,7 @@ Monorepo for a Tunisian small-shop ecosystem: a management app for small indepen
 - `shop-keeper-mobile/` — merchant app (Expo, React Native, TypeScript). Its rules are in `shop-keeper-mobile/CLAUDE.md`; read it before any mobile change.
 - `shop-keeper-backend/` — Laravel 13 REST API. Its rules are in `shop-keeper-backend/CLAUDE.md`; read it before any backend change.
 - `specs/` — Spec Kit features. `001` to `007` are closed. Flow in `.github/skills/`: `speckit-specify` → `clarify` → `plan` → `tasks` → `analyze` → `implement`. Helper scripts are PowerShell (`.specify/scripts/powershell/`).
-- `.specify/memory/constitution.md` — governing rules (version 3.1.0). Read it before any change.
+- `.specify/memory/constitution.md` — governing rules (version 3.2.0). Read it before any change.
 
 ## Current focus
 
