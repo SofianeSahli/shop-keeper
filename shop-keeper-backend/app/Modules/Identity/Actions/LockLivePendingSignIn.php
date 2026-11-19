@@ -8,8 +8,9 @@ final class LockLivePendingSignIn
 {
     public function handle(string $pendingToken): ?PendingSignIn
     {
+        $tokenHash = PendingSignIn::hashToken($pendingToken);
         $pendingSignIn = PendingSignIn::query()
-            ->where('token_hash', PendingSignIn::hashToken($pendingToken))
+            ->where('token_hash', $tokenHash)
             ->lockForUpdate()
             ->first();
 

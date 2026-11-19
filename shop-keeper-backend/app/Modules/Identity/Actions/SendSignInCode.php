@@ -16,13 +16,16 @@ final class SendSignInCode
     public function handle(User $user, PendingSignIn $pendingSignIn): void
     {
         $code = $this->generateEmailCode->handle();
+        $codeHash = Hash::make($code);
+        $expiresAt = now()->addSeconds(PendingSignIn::VALID_SECONDS);
 
         $pendingSignIn->fill([
-            'code_hash' => Hash::make($code),
+            'code_hash' => $codeHash,
             'failed_attempts' => 0,
-            'expires_at' => now()->addSeconds(PendingSignIn::VALID_SECONDS),
+            'expires_at' => $expiresAt,
         ])->save();
 
-        Mail::to($user->email)->queue(new EmailCodeMail($code, EmailCodePurpose::SignIn));
+        $mail = new EmailCodeMail($code, EmailCodePurpose::SignIn);
+        Mail::to($user->email)->queue($mail);
     }
 }

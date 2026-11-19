@@ -13,13 +13,14 @@ final class ShopController
 {
     public function store(CreateShopRequest $request, CreateShop $createShop): ShopResource
     {
-        return new ShopResource($createShop->handle(
-            $request->user()->id,
-            $request->validated('name'),
-            $request->validated('business_type'),
-            $request->validated('city'),
-            $request->validated('address'),
-        ));
+        $ownerId = $request->user()->id;
+        $name = $request->validated('name');
+        $businessType = $request->validated('business_type');
+        $city = $request->validated('city');
+        $address = $request->validated('address');
+        $shop = $createShop->handle($ownerId, $name, $businessType, $city, $address);
+
+        return new ShopResource($shop);
     }
 
     public function show(string $shop): ShopResource

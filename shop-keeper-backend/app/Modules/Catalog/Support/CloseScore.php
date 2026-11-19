@@ -16,11 +16,13 @@ final readonly class CloseScore
 
     public static function between(string $comparedName, string $comparedCandidate): ?self
     {
-        $score = new self(
-            CodePointDistance::between($comparedName, $comparedCandidate),
-            self::oneContainsTheOther($comparedName, $comparedCandidate),
-            count(array_intersect(self::significantWords($comparedName), self::significantWords($comparedCandidate))),
-        );
+        $distance = CodePointDistance::between($comparedName, $comparedCandidate);
+        $contains = self::oneContainsTheOther($comparedName, $comparedCandidate);
+        $nameWords = self::significantWords($comparedName);
+        $candidateWords = self::significantWords($comparedCandidate);
+        $sharedWords = array_intersect($nameWords, $candidateWords);
+        $sharedWordCount = count($sharedWords);
+        $score = new self($distance, $contains, $sharedWordCount);
 
         return $score->isClose() ? $score : null;
     }
@@ -30,10 +32,11 @@ final readonly class CloseScore
      */
     public static function significantWords(string $comparedName): array
     {
-        return array_values(array_unique(array_filter(
-            NameComparison::words($comparedName),
-            fn (string $word): bool => mb_strlen($word) >= self::MIN_SHARED_LENGTH,
-        )));
+        $words = NameComparison::words($comparedName);
+        $longWords = array_filter($words, fn (string $word): bool => mb_strlen($word) >= self::MIN_SHARED_LENGTH);
+        $uniqueWords = array_unique($longWords);
+
+        return array_values($uniqueWords);
     }
 
     public function compare(self $other): int

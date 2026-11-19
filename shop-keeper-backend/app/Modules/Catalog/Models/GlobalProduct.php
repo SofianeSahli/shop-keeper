@@ -52,7 +52,9 @@ class GlobalProduct extends Model
             return null;
         }
 
-        return collect(CatalogLanguage::cases())
+        $languages = CatalogLanguage::cases();
+
+        return collect($languages)
             ->mapWithKeys(fn (CatalogLanguage $language): array => [$language->value => $this->nameIn($language)])
             ->all();
     }

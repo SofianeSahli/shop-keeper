@@ -26,8 +26,11 @@ final class CatalogServiceProvider extends ServiceProvider
 
         Gate::policy(ShopProduct::class, ShopProductPolicy::class);
 
-        RateLimiter::for(self::LOOKUP_LIMITER, fn (Request $request): Limit => Limit::perMinute(self::LOOKUPS_PER_MINUTE)
-            ->by('account:'.$request->user()?->id));
+        RateLimiter::for(self::LOOKUP_LIMITER, function (Request $request): Limit {
+            $accountId = $request->user()?->id;
+
+            return Limit::perMinute(self::LOOKUPS_PER_MINUTE)->by('account:'.$accountId);
+        });
 
         if ($this->app->runningInConsole()) {
             $this->commands([LoadCatalogCommand::class]);

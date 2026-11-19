@@ -12,18 +12,18 @@ final class PasswordResetController
 {
     public function forgot(EmailAddressRequest $request, RequestPasswordReset $requestPasswordReset): Response
     {
-        $requestPasswordReset->handle($request->validated('email'));
+        $email = $request->validated('email');
+        $requestPasswordReset->handle($email);
 
         return response()->noContent(Response::HTTP_ACCEPTED);
     }
 
     public function reset(ResetPasswordRequest $request, ResetPassword $resetPassword): Response
     {
-        $resetPassword->handle(
-            $request->validated('email'),
-            $request->validated('code'),
-            $request->validated('password'),
-        );
+        $email = $request->validated('email');
+        $code = $request->validated('code');
+        $password = $request->validated('password');
+        $resetPassword->handle($email, $code, $password);
 
         return response()->noContent();
     }

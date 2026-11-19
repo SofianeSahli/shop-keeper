@@ -17,10 +17,12 @@ final readonly class Barcode
     public static function parse(string $raw): self
     {
         $digits = str_replace(' ', '', $raw);
+        $digitCount = strlen($digits);
+        $hasValidLength = in_array($digitCount, [self::EAN_8_LENGTH, self::UPC_A_LENGTH, self::EAN_13_LENGTH], true);
+        $digitsWithoutCheck = substr($digits, 0, -1);
+        $expectedCheckDigit = self::checkDigit($digitsWithoutCheck);
 
-        if (preg_match('/^\d+$/', $digits) !== 1
-            || ! in_array(strlen($digits), [self::EAN_8_LENGTH, self::UPC_A_LENGTH, self::EAN_13_LENGTH], true)
-            || self::checkDigit(substr($digits, 0, -1)) !== $digits[-1]) {
+        if (preg_match('/^\d+$/', $digits) !== 1 || ! $hasValidLength || $expectedCheckDigit !== $digits[-1]) {
             throw new InvalidBarcode(InvalidBarcode::MALFORMED);
         }
 
@@ -37,7 +39,9 @@ final readonly class Barcode
     {
         $sum = 0;
 
-        foreach (array_reverse(str_split($digitsWithoutCheck)) as $position => $digit) {
+        $digitList = str_split($digitsWithoutCheck);
+
+        foreach (array_reverse($digitList) as $position => $digit) {
             $sum += (int) $digit * ($position % 2 === 0 ? 3 : 1);
         }
 

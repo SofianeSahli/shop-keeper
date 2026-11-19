@@ -37,9 +37,11 @@ final class EmailCodeMail extends Mailable implements ShouldBeEncrypted, ShouldQ
 
     public function content(): Content
     {
+        $validMinutes = $this->validMinutes();
+
         return new Content(
             text: 'identity::mail.email-code',
-            with: ['validMinutes' => $this->validMinutes()],
+            with: ['validMinutes' => $validMinutes],
         );
     }
 

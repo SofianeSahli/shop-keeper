@@ -12,6 +12,9 @@ final class SuggestionController
 {
     public function __invoke(SuggestionsRequest $request, CurrentShop $currentShop, SuggestProducts $suggestProducts): AnonymousResourceCollection
     {
-        return SuggestionResource::collection($suggestProducts->handle($currentShop->shopId, $request->validated('q')));
+        $search = $request->validated('q');
+        $suggestions = $suggestProducts->handle($currentShop->shopId, $search);
+
+        return SuggestionResource::collection($suggestions);
     }
 }

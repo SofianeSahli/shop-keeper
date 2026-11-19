@@ -10,7 +10,8 @@ final class LogoutController
 {
     public function __invoke(Request $request, SignOutDevice $signOutDevice): Response
     {
-        $signOutDevice->handle($request->user());
+        $user = $request->user();
+        $signOutDevice->handle($user);
 
         return response()->noContent();
     }

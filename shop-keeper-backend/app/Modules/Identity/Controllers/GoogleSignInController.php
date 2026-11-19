@@ -10,11 +10,12 @@ final class GoogleSignInController
 {
     public function __invoke(GoogleSignInRequest $request, SignInWithGoogle $signInWithGoogle): SessionResource
     {
-        return new SessionResource($signInWithGoogle->handle(
-            $request->validated('id_token'),
-            $request->validated('device_id'),
-            $request->validated('terms_version'),
-            $request->normalizedPhone(),
-        ));
+        $idToken = $request->validated('id_token');
+        $deviceId = $request->validated('device_id');
+        $termsVersion = $request->validated('terms_version');
+        $phone = $request->normalizedPhone();
+        $signIn = $signInWithGoogle->handle($idToken, $deviceId, $termsVersion, $phone);
+
+        return new SessionResource($signIn);
     }
 }

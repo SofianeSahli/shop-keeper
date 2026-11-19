@@ -84,7 +84,8 @@ final class CreateShopProduct
             return $this->findOrCreatePendingProduct->handle($new->barcode, $new->name, $new->language);
         }
 
-        $this->requireFields($new, nameRequired: ! $catalogProduct->isVerified(), languageRequired: $new->name === null);
+        $isVerified = $catalogProduct->isVerified();
+        $this->requireFields($new, nameRequired: ! $isVerified, languageRequired: $new->name === null);
 
         return $catalogProduct;
     }
@@ -132,7 +133,9 @@ final class CreateShopProduct
             return $this->answerAfterLostRace($new, $catalogProduct, $name, $lostRace);
         }
 
-        return new CreatedShopProduct($product->setRelation('globalProduct', $catalogProduct), wasCreated: true);
+        $product->setRelation('globalProduct', $catalogProduct);
+
+        return new CreatedShopProduct($product, wasCreated: true);
     }
 
     private function answerAfterLostRace(

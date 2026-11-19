@@ -15,7 +15,8 @@ final class UpdateShopProduct
     public function handle(ShopProduct $product, ShopProductChanges $changes): ShopProduct
     {
         return DB::transaction(function () use ($product, $changes): ShopProduct {
-            $locked = ShopProduct::query()->whereUuid($product->uuid())->lockForUpdate()->with('globalProduct.names')->firstOrFail();
+            $productId = $product->uuid();
+            $locked = ShopProduct::query()->whereUuid($productId)->lockForUpdate()->with('globalProduct.names')->firstOrFail();
 
             if ($this->isRenamed($locked, $changes)) {
                 $this->checkNewName($locked, $changes);
@@ -47,7 +48,8 @@ final class UpdateShopProduct
             return;
         }
 
-        $this->nameRules->refuseIfNameTaken($product->shop_id, $changes->name, exceptProductId: $product->uuid());
+        $productId = $product->uuid();
+        $this->nameRules->refuseIfNameTaken($product->shop_id, $changes->name, exceptProductId: $productId);
 
         if ($product->globalProduct?->barcode === null) {
             $this->nameRules->holdIfClose($product->shop_id, $changes->name, $changes->confirmedDifferent, $product);
@@ -59,7 +61,8 @@ final class UpdateShopProduct
         try {
             $product->save();
         } catch (UniqueConstraintViolationException $lostRace) {
-            $this->nameRules->refuseIfNameTaken($product->shop_id, $product->name, exceptProductId: $product->uuid(), readLatest: true);
+            $productId = $product->uuid();
+            $this->nameRules->refuseIfNameTaken($product->shop_id, $product->name, exceptProductId: $productId, readLatest: true);
 
             throw $lostRace;
         }

@@ -55,7 +55,8 @@ abstract class IdentityRequest extends FormRequest
         $email = $this->input('email');
 
         if (is_string($email)) {
-            $this->merge(['email' => mb_strtolower($email)]);
+            $lowercaseEmail = mb_strtolower($email);
+            $this->merge(['email' => $lowercaseEmail]);
         }
     }
 
@@ -86,7 +87,10 @@ abstract class IdentityRequest extends FormRequest
 
     protected function currentTermsRule(): array
     {
-        return ['string', Rule::in([config('shop_keeper.terms_version')])];
+        $currentTermsVersion = config('shop_keeper.terms_version');
+        $isCurrentTerms = Rule::in([$currentTermsVersion]);
+
+        return ['string', $isCurrentTerms];
     }
 
     protected function newPasswordRules(): array

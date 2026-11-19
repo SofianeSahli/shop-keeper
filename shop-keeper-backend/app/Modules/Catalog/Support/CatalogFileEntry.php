@@ -25,12 +25,12 @@ final readonly class CatalogFileEntry
             throw new CatalogFileError('entry.invalid');
         }
 
-        return new self(
-            self::key($entry['key'] ?? null),
-            self::barcode($entry['barcode'] ?? null),
-            self::names($entry['names'] ?? null),
-            self::spellings($entry['spellings'] ?? []),
-        );
+        $key = self::key($entry['key'] ?? null);
+        $barcode = self::barcode($entry['barcode'] ?? null);
+        $names = self::names($entry['names'] ?? null);
+        $spellings = self::spellings($entry['spellings'] ?? []);
+
+        return new self($key, $barcode, $names, $spellings);
     }
 
     public static function keyOf(mixed $entry): ?string
@@ -104,14 +104,20 @@ final readonly class CatalogFileEntry
 
     private static function text(mixed $text, string $field): string
     {
-        if (! is_string($text) || trim($text) === '') {
+        if (! is_string($text)) {
             throw new CatalogFileError("{$field}.missing");
         }
 
-        if (mb_strlen(trim($text)) > GlobalProductName::NAME_MAX_LENGTH) {
+        $trimmedText = trim($text);
+
+        if ($trimmedText === '') {
+            throw new CatalogFileError("{$field}.missing");
+        }
+
+        if (mb_strlen($trimmedText) > GlobalProductName::NAME_MAX_LENGTH) {
             throw new CatalogFileError("{$field}.too_long");
         }
 
-        return trim($text);
+        return $trimmedText;
     }
 }

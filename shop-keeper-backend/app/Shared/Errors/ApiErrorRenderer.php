@@ -21,23 +21,36 @@ final class ApiErrorRenderer
 
         $apiException = $this->toApiException($exception);
 
-        return response()->json(['error' => $apiException->toErrorBody()], $apiException->status);
+        $errorBody = $apiException->toErrorBody();
+
+        return response()->json(['error' => $errorBody], $apiException->status);
     }
 
     private function toApiException(Throwable $exception): ApiException
     {
         return match (true) {
             $exception instanceof ApiException => $exception,
-            $exception instanceof ValidationException => new ApiException('validation.failed', 422, fields: $exception->errors()),
+            $exception instanceof ValidationException => $this->validationFailure($exception),
             $exception instanceof AuthenticationException => new ApiException('auth.unauthenticated', 401),
-            $exception instanceof TooManyRequestsHttpException => new ApiException(
-                'request.throttled',
-                429,
-                retryAfterSeconds: (int) ($exception->getHeaders()['Retry-After'] ?? 0),
-            ),
+            $exception instanceof TooManyRequestsHttpException => $this->throttled($exception),
             $exception instanceof NotFoundHttpException => new ApiException('request.not_found', 404),
             $exception instanceof MethodNotAllowedHttpException => new ApiException('request.method_not_allowed', 405),
             default => new ApiException('server.error', 500),
         };
+    }
+
+    private function validationFailure(ValidationException $exception): ApiException
+    {
+        $fieldErrors = $exception->errors();
+
+        return new ApiException('validation.failed', 422, fields: $fieldErrors);
+    }
+
+    private function throttled(TooManyRequestsHttpException $exception): ApiException
+    {
+        $headers = $exception->getHeaders();
+        $retryAfterSeconds = (int) ($headers['Retry-After'] ?? 0);
+
+        return new ApiException('request.throttled', 429, retryAfterSeconds: $retryAfterSeconds);
     }
 }

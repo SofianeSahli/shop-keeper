@@ -18,6 +18,15 @@ Next: spec 008 — catalog checking, not specified yet. Open question for the ow
 - All entered data is collected by the backend (constitution VIII). No hard-coded app name, API URL or colors outside config.
 - One standalone app per actor (merchant, customer, wholesaler, sponsor, field agent). Never add another actor's features as a "mode" inside an app; apps talk only through the backend API and may share only a common package.
 
+## Code style (backend and mobile)
+
+- Never put a call inside an argument. Store the call's result in a named variable first, then pass the variable.
+  - No: `return new BarcodeLookupResource($lookUpBarcode->handle($currentShop->shopId, $parsedBarcode));`
+  - Yes: `$lookup = $lookUpBarcode->handle($currentShop->shopId, $parsedBarcode);` then `return new BarcodeLookupResource($lookup);`
+  - This covers function, method, static and constructor calls (`new`), and `await` calls in TypeScript, also when the call sits in a ternary, a concatenation, a template string or an array inside the argument (`format('Hello '.$user->name())`, `save(['id' => $product->uuid()])`).
+  - Chained calls (`$query->where('a', $value)->get()`) and closures passed as callbacks are fine. Inside a closure the rule applies again, so turn an arrow function into a full closure when it needs a variable.
+  - Existing backend app code follows this. Tests and Laravel scaffolding (`config/`, `public/`, `bootstrap/`), merged migrations and the mobile app have older code that does not: apply the rule to any code you write or change there.
+
 ## Git and pull requests
 
 - One feature or fix per branch, and exactly one commit per pull request: squash before pushing (`git reset --soft $(git merge-base main HEAD)`, then one `git commit`), amend after new changes and push with `--force-with-lease`.

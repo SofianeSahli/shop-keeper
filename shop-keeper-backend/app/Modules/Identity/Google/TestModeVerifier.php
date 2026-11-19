@@ -18,16 +18,20 @@ final class TestModeVerifier implements GoogleIdentityChecker
             return $this->googleIdentityVerifier->verify($idToken);
         }
 
-        $email = mb_strtolower(Str::after($idToken, self::TEST_TOKEN_PREFIX));
+        $typedEmail = Str::after($idToken, self::TEST_TOKEN_PREFIX);
+        $email = mb_strtolower($typedEmail);
 
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             throw new ApiException('auth.google_invalid', 401);
         }
 
+        $emailHash = hash('sha256', $email);
+        $name = Str::before($email, '@');
+
         return new GoogleIdentity(
-            sub: self::TEST_TOKEN_PREFIX.hash('sha256', $email),
+            sub: self::TEST_TOKEN_PREFIX.$emailHash,
             email: $email,
-            name: Str::before($email, '@'),
+            name: $name,
         );
     }
 }

@@ -30,7 +30,9 @@ class ShopProduct extends Model
 
     public function uuid(): string
     {
-        return $this->getAttribute($this->getKeyName());
+        $keyName = $this->getKeyName();
+
+        return $this->getAttribute($keyName);
     }
 
     protected static function booted(): void

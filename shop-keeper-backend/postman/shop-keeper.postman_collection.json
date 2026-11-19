@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Shop Keeper API",
-    "description": "Runs the whole journey in order against a local backend with AUTH_TEST_MODE=true and the catalog loaded (php artisan catalog:load). Set base_url, then run the collection; nothing needs editing. `test:<email>` stands in for Google and `000000` for every emailed code. Each run generates its own addresses, devices, barcodes and product ids.",
+    "description": "One request per API route. Import it with shop-keeper.postman_environment.json and select the \"Shop Keeper local\" environment. The backend runs with AUTH_TEST_MODE=true and the catalog loaded (php artisan catalog:load): `test:<email>` stands in for Google and `000000` for every emailed code. Run the folders in order the first time: tokens, ids, emails, devices and barcodes are saved in the environment, so any request can then be sent again on its own.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -14,50 +14,49 @@
       }
     ]
   },
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:8000",
-      "type": "string"
-    },
-    {
-      "key": "terms_version",
-      "value": "2026-11",
-      "type": "string"
-    },
-    {
-      "key": "email_code",
-      "value": "000000",
-      "type": "string"
-    },
-    {
-      "key": "password",
-      "value": "first journey password",
-      "type": "string"
-    },
-    {
-      "key": "new_password",
-      "value": "second journey password",
-      "type": "string"
-    }
-  ],
   "item": [
     {
-      "name": "1. Google account",
+      "name": "1. Accounts",
       "item": [
         {
-          "name": "First Google sign-in",
+          "name": "Sign in with Google",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/google",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "google"
+              ]
+            },
+            "description": "Starts a new Google account each time: google_email and device_id are generated before the request.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_token\": \"test:{{google_email}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"terms_version\": \"{{terms_version}}\",\n  \"phone\": \"{{phone}}\"\n}"
+            }
+          },
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const runId = Date.now();",
-                  "pm.collectionVariables.set('google_email', `google.${runId}@gmail.com`);",
-                  "pm.collectionVariables.set('email', `merchant.${runId}@example.com`);",
-                  "pm.collectionVariables.set('device_id', pm.variables.replaceIn('{{$guid}}'));",
-                  "pm.collectionVariables.set('new_device_id', pm.variables.replaceIn('{{$guid}}'));"
+                  "pm.environment.set('google_email', `google.${Date.now()}@gmail.com`);",
+                  "pm.environment.set('device_id', pm.variables.replaceIn('{{$guid}}'));"
                 ]
               }
             },
@@ -70,86 +69,14 @@
                   "  pm.response.to.have.status(200);",
                   "  pm.expect(pm.response.json().data.status).to.eql('signed_in');",
                   "});",
-                  "pm.collectionVariables.set('token', pm.response.json().data.token);"
+                  "pm.environment.set('token', pm.response.json().data.token);"
                 ]
               }
             }
-          ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id_token\": \"test:{{google_email}}\",\n  \"device_id\": \"{{device_id}}\",\n  \"terms_version\": \"{{terms_version}}\",\n  \"phone\": \"+216 20 123 456\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/v1/auth/google",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "google"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Read the account, no shop yet",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('account with no shop', () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.shop).to.eql(null);",
-                  "  pm.expect(pm.response.json().data.phone).to.eql('+21620123456');",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/api/v1/me",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "me"
-              ]
-            }
-          }
+          ]
         },
         {
           "name": "Sign out of this device",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('signed out', () => pm.response.to.have.status(204));"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [],
@@ -165,30 +92,22 @@
                 "logout"
               ]
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "2. Email account and shop",
-      "item": [
-        {
-          "name": "Sign up with email",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('code sent', () => pm.response.to.have.status(202));"
+                  "pm.test('signed out', () => pm.response.to.have.status(204));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Sign up with email",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
               {
@@ -196,10 +115,6 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Amira\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"terms_version\": \"{{terms_version}}\"\n}"
-            },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/email/register",
               "host": [
@@ -212,12 +127,28 @@
                 "email",
                 "register"
               ]
+            },
+            "description": "Starts a new email account each time: email, device_id and new_device_id are generated before the request.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{merchant_name}}\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"terms_version\": \"{{terms_version}}\"\n}"
             }
-          }
-        },
-        {
-          "name": "Ask for a new code",
+          },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('email', `merchant.${Date.now()}@example.com`);",
+                  "pm.environment.set('device_id', pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.environment.set('new_device_id', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -227,11 +158,11 @@
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Ask for a new email code",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
               {
@@ -239,10 +170,6 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\"\n}"
-            },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/email/resend",
               "host": [
@@ -255,30 +182,30 @@
                 "email",
                 "resend"
               ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
             }
-          }
-        },
-        {
-          "name": "Confirm the address",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('signed in', () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.status).to.eql('signed_in');",
-                  "});",
-                  "pm.collectionVariables.set('token', pm.response.json().data.token);"
+                  "pm.test('code sent', () => pm.response.to.have.status(202));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Confirm the email address",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
               {
@@ -286,10 +213,6 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"code\": \"{{email_code}}\",\n  \"device_id\": \"{{device_id}}\"\n}"
-            },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/email/confirm",
               "host": [
@@ -302,26 +225,70 @@
                 "email",
                 "confirm"
               ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"code\": \"{{email_code}}\",\n  \"device_id\": \"{{device_id}}\"\n}"
             }
-          }
-        },
-        {
-          "name": "Create the shop",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('shop created in dinars', () => {",
-                  "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().data.currency).to.eql('TND');",
+                  "pm.test('signed in', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.status).to.eql('signed_in');",
                   "});",
-                  "pm.collectionVariables.set('shop_id', pm.response.json().data.id);"
+                  "pm.environment.set('token', pm.response.json().data.token);"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Read the account",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('account returned', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.email).to.eql(pm.environment.get('email'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Shop",
+      "item": [
+        {
+          "name": "Create the shop",
           "request": {
             "method": "POST",
             "header": [
@@ -330,10 +297,6 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Epicerie Amira\",\n  \"business_type\": \"grocery\",\n  \"city\": \"Sousse\"\n}"
-            },
             "url": {
               "raw": "{{base_url}}/api/v1/shops",
               "host": [
@@ -344,25 +307,30 @@
                 "v1",
                 "shops"
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{shop_name}}\",\n  \"business_type\": \"grocery\",\n  \"city\": \"{{shop_city}}\"\n}"
             }
-          }
-        },
-        {
-          "name": "Read the shop",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('own shop returned', () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.id).to.eql(Number(pm.collectionVariables.get('shop_id')));",
-                  "});"
+                  "pm.test('shop created in dinars', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().data.currency).to.eql('TND');",
+                  "});",
+                  "pm.environment.set('shop_id', pm.response.json().data.id);"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Read the shop",
           "request": {
             "method": "GET",
             "header": [],
@@ -378,164 +346,29 @@
                 "{{shop_id}}"
               ]
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "3. Password reset",
-      "item": [
-        {
-          "name": "Forgot the password",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('code sent', () => pm.response.to.have.status(202));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/v1/auth/password/forgot",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "password",
-                "forgot"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Reset the password",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('password changed', () => pm.response.to.have.status(204));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"code\": \"{{email_code}}\",\n  \"password\": \"{{new_password}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/v1/auth/password/reset",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "password",
-                "reset"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Sign in with the new password",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('signed in', () => {",
+                  "pm.test('own shop returned', () => {",
                   "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.status).to.eql('signed_in');",
-                  "});",
-                  "pm.collectionVariables.set('token', pm.response.json().data.token);"
+                  "  pm.expect(pm.response.json().data.id).to.eql(Number(pm.environment.get('shop_id')));",
+                  "});"
                 ]
               }
             }
-          ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{new_password}}\",\n  \"device_id\": \"{{device_id}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/v1/auth/email/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "email",
-                "login"
-              ]
-            }
-          }
+          ]
         }
       ]
     },
     {
-      "name": "4. Two-step sign-in",
+      "name": "3. Password and two-step sign-in",
       "item": [
         {
           "name": "Turn on two-step sign-in",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('two-step sign-in on', () => pm.response.to.have.status(204));"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [],
@@ -551,30 +384,22 @@
                 "two-factor"
               ]
             }
-          }
-        },
-        {
-          "name": "Sign in on a new device, code needed",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('held for the code, no session', () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.status).to.eql('code_required');",
-                  "  pm.expect(pm.response.json().data).to.not.have.property('token');",
-                  "});",
-                  "pm.collectionVariables.set('pending_sign_in', pm.response.json().data.pending_sign_in);"
+                  "pm.test('two-step sign-in on', () => pm.response.to.have.status(204));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Forgot the password",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
               {
@@ -582,10 +407,92 @@
                 "value": "application/json"
               }
             ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/password/forgot",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "password",
+                "forgot"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{new_password}}\",\n  \"device_id\": \"{{new_device_id}}\"\n}"
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code sent', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset the password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/password/reset",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "password",
+                "reset"
+              ]
             },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"code\": \"{{email_code}}\",\n  \"password\": \"{{new_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('password changed', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign in with email and password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/v1/auth/email/login",
               "host": [
@@ -598,26 +505,40 @@
                 "email",
                 "login"
               ]
+            },
+            "description": "With two-step sign-in on, the answer is code_required and pending_sign_in is saved; otherwise the token is saved.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{new_password}}\",\n  \"device_id\": \"{{new_device_id}}\"\n}"
             }
-          }
-        },
-        {
-          "name": "Ask for a new sign-in code",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('new code sent', () => pm.response.to.have.status(202));"
+                  "const data = pm.response.json().data;",
+                  "pm.test('signed in or held for the code', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(data.status).to.be.oneOf(['signed_in', 'code_required']);",
+                  "});",
+                  "if (data.status === 'signed_in') {",
+                  "  pm.environment.set('token', data.token);",
+                  "} else {",
+                  "  pm.environment.set('pending_sign_in', data.pending_sign_in);",
+                  "}"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Ask for a new sign-in code",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
               {
@@ -625,10 +546,6 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"pending_sign_in\": \"{{pending_sign_in}}\"\n}"
-            },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/two-factor/resend",
               "host": [
@@ -641,30 +558,30 @@
                 "two-factor",
                 "resend"
               ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pending_sign_in\": \"{{pending_sign_in}}\"\n}"
             }
-          }
-        },
-        {
-          "name": "Send the emailed code",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('signed in', () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.status).to.eql('signed_in');",
-                  "});",
-                  "pm.collectionVariables.set('token', pm.response.json().data.token);"
+                  "pm.test('code sent', () => pm.response.to.have.status(202));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Send the sign-in code",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
               {
@@ -672,10 +589,6 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"pending_sign_in\": \"{{pending_sign_in}}\",\n  \"code\": \"{{email_code}}\"\n}"
-            },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/two-factor",
               "host": [
@@ -687,22 +600,33 @@
                 "auth",
                 "two-factor"
               ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pending_sign_in\": \"{{pending_sign_in}}\",\n  \"code\": \"{{email_code}}\"\n}"
             }
-          }
-        },
-        {
-          "name": "Ask for a code to turn it off",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('code sent', () => pm.response.to.have.status(202));"
+                  "pm.test('signed in', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.status).to.eql('signed_in');",
+                  "});",
+                  "pm.environment.set('token', pm.response.json().data.token);"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Ask for a code to turn off two-step sign-in",
           "request": {
             "method": "POST",
             "header": [],
@@ -719,21 +643,21 @@
                 "disable-code"
               ]
             }
-          }
-        },
-        {
-          "name": "Turn off two-step sign-in",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('two-step sign-in off', () => pm.response.to.have.status(204));"
+                  "pm.test('code sent', () => pm.response.to.have.status(202));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Turn off two-step sign-in",
           "request": {
             "method": "DELETE",
             "header": [
@@ -742,10 +666,6 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"code\": \"{{email_code}}\"\n}"
-            },
             "url": {
               "raw": "{{base_url}}/api/v1/me/two-factor",
               "host": [
@@ -757,50 +677,49 @@
                 "me",
                 "two-factor"
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{email_code}}\"\n}"
             }
-          }
-        },
-        {
-          "name": "Read the account with its shop",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('account with its shop, two-step sign-in off', () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.two_factor_enabled).to.eql(false);",
-                  "  pm.expect(pm.response.json().data.shop.id).to.eql(Number(pm.collectionVariables.get('shop_id')));",
-                  "});"
+                  "pm.test('two-step sign-in off', () => pm.response.to.have.status(204));"
                 ]
               }
             }
-          ],
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Products",
+      "item": [
+        {
+          "name": "Look up a barcode",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/v1/me",
+              "raw": "{{base_url}}/api/v1/catalog/barcodes/{{barcode}}",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "me"
+                "catalog",
+                "barcodes",
+                "{{barcode}}"
               ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "5. Products",
-      "description": "Needs the catalog loaded (php artisan catalog:load). Uses the shop created in folder 2.",
-      "item": [
-        {
-          "name": "Look up an unknown barcode",
+            },
+            "description": "A new valid EAN-13 barcode, unknown to the catalog, is generated before the request."
+          },
           "event": [
             {
               "listen": "prerequest",
@@ -809,7 +728,7 @@
                 "exec": [
                   "const digits = '619' + Array.from({ length: 9 }, () => Math.floor(Math.random() * 10)).join('');",
                   "const sum = digits.split('').reverse().reduce((total, digit, position) => total + Number(digit) * (position % 2 === 0 ? 3 : 1), 0);",
-                  "pm.collectionVariables.set('barcode', digits + ((10 - sum % 10) % 10));"
+                  "pm.environment.set('barcode', digits + ((10 - sum % 10) % 10));"
                 ]
               }
             },
@@ -818,41 +737,49 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('barcode unknown to the catalog', () => {",
+                  "pm.test('barcode looked up', () => {",
                   "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.status).to.eql('unknown');",
+                  "  pm.expect(pm.response.json().data.status).to.be.oneOf(['unknown', 'pending', 'verified']);",
                   "});"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Add a product",
           "request": {
-            "method": "GET",
-            "header": [],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{base_url}}/api/v1/catalog/barcodes/{{barcode}}",
+              "raw": "{{base_url}}/api/v1/products",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "catalog",
-                "barcodes",
-                "{{barcode}}"
+                "products"
               ]
+            },
+            "description": "Adds the looked-up barcode with a typed name. A new product_id is generated before the request.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{product_id}}\",\n  \"barcode\": \"{{barcode}}\",\n  \"name\": \"{{product_name}}\",\n  \"language\": \"fr\",\n  \"sale_price\": 1200,\n  \"purchase_price\": 900\n}"
             }
-          }
-        },
-        {
-          "name": "Add it with a typed name",
+          },
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('product_id', pm.variables.replaceIn('{{$guid}}'));"
+                  "pm.environment.set('product_id', pm.variables.replaceIn('{{$guid}}'));"
                 ]
               }
             },
@@ -861,150 +788,22 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('product added, barcode waiting to be checked', () => {",
+                  "pm.test('product added', () => {",
                   "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().data.catalog_product.status).to.eql('pending');",
-                  "  pm.expect(pm.response.json().data.catalog_product.names).to.eql(null);",
-                  "});",
-                  "pm.collectionVariables.set('barcode_product_id', pm.response.json().data.id);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/v1/products",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": \"{{product_id}}\",\n  \"barcode\": \"{{barcode}}\",\n  \"name\": \"Biscuit du quartier\",\n  \"language\": \"fr\",\n  \"sale_price\": 1200,\n  \"purchase_price\": 900\n}"
-            }
-          }
-        },
-        {
-          "name": "Look it up again",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('pending, already in the shop', () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.status).to.eql('pending');",
-                  "  pm.expect(pm.response.json().data.shop_product.id).to.eql(pm.collectionVariables.get('barcode_product_id'));",
+                  "  pm.expect(pm.response.json().data.id).to.eql(pm.environment.get('product_id'));",
                   "});"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Suggest products",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/v1/catalog/barcodes/{{barcode}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "catalog",
-                "barcodes",
-                "{{barcode}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Add the same barcode again",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.collectionVariables.set('product_id', pm.variables.replaceIn('{{$guid}}'));"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('refused, points to the existing product', () => {",
-                  "  pm.response.to.have.status(409);",
-                  "  pm.expect(pm.response.json().error.code).to.eql('product.already_in_shop');",
-                  "  pm.expect(pm.response.json().error.existing_product_id).to.eql(pm.collectionVariables.get('barcode_product_id'));",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/v1/products",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": \"{{product_id}}\",\n  \"barcode\": \"{{barcode}}\",\n  \"name\": \"Autre biscuit\",\n  \"language\": \"fr\",\n  \"sale_price\": 1200\n}"
-            }
-          }
-        },
-        {
-          "name": "Suggest products for tom",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const tomatoes = pm.response.json().data.find((suggestion) => suggestion.catalog_product && suggestion.catalog_product.key === 'products.tomato');",
-                  "pm.test('the catalog tomatoes are suggested', () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  pm.expect(tomatoes).to.not.eql(undefined);",
-                  "});",
-                  "pm.collectionVariables.set('catalog_product_id', tomatoes.catalog_product.id);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/api/v1/products/suggestions?q=tom",
+              "raw": "{{base_url}}/api/v1/products/suggestions?q={{search}}",
               "host": [
                 "{{base_url}}"
               ],
@@ -1017,263 +816,28 @@
               "query": [
                 {
                   "key": "q",
-                  "value": "tom"
+                  "value": "{{search}}"
                 }
               ]
             }
-          }
-        },
-        {
-          "name": "Add the suggested catalog product",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.collectionVariables.set('product_id', pm.variables.replaceIn('{{$guid}}'));"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('added with the French catalog name', () => {",
-                  "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().data.name).to.eql('Tomate');",
-                  "});",
-                  "pm.collectionVariables.set('tomato_product_id', pm.response.json().data.id);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/v1/products",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": \"{{product_id}}\",\n  \"catalog_product_id\": {{catalog_product_id}},\n  \"language\": \"fr\",\n  \"sale_price\": 1800\n}"
-            }
-          }
-        },
-        {
-          "name": "Try the same name again",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.collectionVariables.set('product_id', pm.variables.replaceIn('{{$guid}}'));"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('same name refused even when confirmed', () => {",
-                  "  pm.response.to.have.status(409);",
-                  "  pm.expect(pm.response.json().error.code).to.eql('product.name_taken');",
-                  "  pm.expect(pm.response.json().error.existing_product_id).to.eql(pm.collectionVariables.get('tomato_product_id'));",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/v1/products",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": \"{{product_id}}\",\n  \"name\": \"tomates\",\n  \"sale_price\": 1800,\n  \"confirm_different\": true\n}"
-            }
-          }
-        },
-        {
-          "name": "Create a close name",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.collectionVariables.set('close_product_id', pm.variables.replaceIn('{{$guid}}'));"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('held, with the closest matches', () => {",
-                  "  pm.response.to.have.status(409);",
-                  "  pm.expect(pm.response.json().error.code).to.eql('product.name_close');",
-                  "  pm.expect(pm.response.json().error.matches.length).to.be.above(0);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/v1/products",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": \"{{close_product_id}}\",\n  \"name\": \"Tomates séchées\",\n  \"sale_price\": 9000\n}"
-            }
-          }
-        },
-        {
-          "name": "Confirm it is different",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('created once confirmed', () => {",
-                  "  pm.response.to.have.status(201);",
-                  "  pm.expect(pm.response.json().data.id).to.eql(pm.collectionVariables.get('close_product_id'));",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/v1/products",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": \"{{close_product_id}}\",\n  \"name\": \"Tomates séchées\",\n  \"sale_price\": 9000,\n  \"confirm_different\": true\n}"
-            }
-          }
-        },
-        {
-          "name": "Send the same creation again",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('the same product, nothing new', () => {",
+                  "pm.test('suggestions returned', () => {",
                   "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.id).to.eql(pm.collectionVariables.get('close_product_id'));",
+                  "  pm.expect(pm.response.json().data).to.be.an('array');",
                   "});"
                 ]
               }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/v1/products",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": \"{{close_product_id}}\",\n  \"name\": \"Tomates séchées\",\n  \"sale_price\": 9000,\n  \"confirm_different\": true\n}"
-            }
-          }
+          ]
         },
         {
           "name": "List the products",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('the three products of the shop', () => {",
-                  "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.length).to.eql(3);",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -1288,33 +852,24 @@
                 "products"
               ]
             }
-          }
-        },
-        {
-          "name": "Read one product",
+          },
           "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.collectionVariables.set('product_id', pm.collectionVariables.get('tomato_product_id'));"
-                ]
-              }
-            },
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('the tomatoes, linked to the catalog', () => {",
+                  "pm.test('products of the shop', () => {",
                   "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.catalog_product.key).to.eql('products.tomato');",
+                  "  pm.expect(pm.response.json().data.length).to.be.above(0);",
                   "});"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Read one product",
           "request": {
             "method": "GET",
             "header": [],
@@ -1330,25 +885,24 @@
                 "{{product_id}}"
               ]
             }
-          }
-        },
-        {
-          "name": "Change a price",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('new prices saved', () => {",
+                  "pm.test('the product', () => {",
                   "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json().data.sale_price).to.eql(1900);",
-                  "  pm.expect(pm.response.json().data.purchase_price).to.eql(1300);",
+                  "  pm.expect(pm.response.json().data.id).to.eql(pm.environment.get('product_id'));",
                   "});"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Change the prices",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1373,7 +927,22 @@
               "mode": "raw",
               "raw": "{\n  \"sale_price\": 1900,\n  \"purchase_price\": 1300\n}"
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('new prices saved', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.sale_price).to.eql(1900);",
+                  "  pm.expect(pm.response.json().data.purchase_price).to.eql(1300);",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

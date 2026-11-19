@@ -21,22 +21,27 @@ final class NameComparison
 
     public static function compared(string $name): string
     {
-        $decomposed = Normalizer::normalize(trim($name), Normalizer::FORM_KD);
+        $trimmedName = trim($name);
+        $decomposed = Normalizer::normalize($trimmedName, Normalizer::FORM_KD);
 
         if ($decomposed === false) {
             return '';
         }
 
         $withoutMarks = preg_replace('/\p{Mn}+/u', '', $decomposed);
-        $lowercase = mb_strtolower(strtr($withoutMarks, self::LETTER_VARIANTS));
+        $withoutVariants = strtr($withoutMarks, self::LETTER_VARIANTS);
+        $lowercase = mb_strtolower($withoutVariants);
         $words = preg_split('/[^\p{L}\p{N}]+/u', $lowercase, -1, PREG_SPLIT_NO_EMPTY);
+        $singularWords = array_map(self::withoutPluralMark(...), $words);
 
-        return implode(self::WORD_SEPARATOR, array_map(self::withoutPluralMark(...), $words));
+        return implode(self::WORD_SEPARATOR, $singularWords);
     }
 
     public static function identityKey(string $name): string
     {
-        return str_replace(self::WORD_SEPARATOR, '', self::compared($name));
+        $compared = self::compared($name);
+
+        return str_replace(self::WORD_SEPARATOR, '', $compared);
     }
 
     public static function words(string $comparedName): array

@@ -20,18 +20,23 @@ final class FinishSignIn
             return $this->holdForCode($user, $deviceId);
         }
 
-        return SignInResult::signedIn($user, $this->issueDeviceSession->handle($user, $deviceId));
+        $deviceToken = $this->issueDeviceSession->handle($user, $deviceId);
+
+        return SignInResult::signedIn($user, $deviceToken);
     }
 
     private function holdForCode(User $user, string $deviceId): SignInResult
     {
-        $pendingToken = bin2hex(random_bytes(self::PENDING_TOKEN_BYTES));
-
-        $this->sendSignInCode->handle($user, new PendingSignIn([
+        $randomBytes = random_bytes(self::PENDING_TOKEN_BYTES);
+        $pendingToken = bin2hex($randomBytes);
+        $tokenHash = PendingSignIn::hashToken($pendingToken);
+        $pendingSignIn = new PendingSignIn([
             'user_id' => $user->id,
             'device_id' => $deviceId,
-            'token_hash' => PendingSignIn::hashToken($pendingToken),
-        ]));
+            'token_hash' => $tokenHash,
+        ]);
+
+        $this->sendSignInCode->handle($user, $pendingSignIn);
 
         return SignInResult::codeRequired($pendingToken, PendingSignIn::VALID_SECONDS);
     }
