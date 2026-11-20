@@ -20,6 +20,13 @@ trait HasBinaryUuidKey
         return $this->getAttributes()[$this->getKeyName()] ?? null;
     }
 
+    public function uuid(): string
+    {
+        $keyName = $this->getKeyName();
+
+        return $this->getAttribute($keyName);
+    }
+
     public function scopeWhereUuid(Builder $query, string $uuid): void
     {
         if (! Str::isUuid($uuid)) {

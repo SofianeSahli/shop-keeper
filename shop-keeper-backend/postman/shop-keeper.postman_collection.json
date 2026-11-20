@@ -945,6 +945,533 @@
           ]
         }
       ]
+    },
+    {
+      "name": "5. Suppliers",
+      "item": [
+        {
+          "name": "Add a supplier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/suppliers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "suppliers"
+              ]
+            },
+            "description": "Adds a supplier. A new supplier_id and a new name are made before the request, so the folder can run again.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{supplier_id}}\",\n  \"name\": \"{{supplier_name}}\",\n  \"phone\": \"{{phone}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('supplier_id', pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.environment.set('supplier_name', 'Grossiste ' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('supplier added', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().data.id).to.eql(pm.environment.get('supplier_id'));",
+                  "  pm.expect(pm.response.json().data.balance).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List the suppliers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/suppliers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "suppliers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('suppliers of the shop', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read one supplier",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/suppliers/{{supplier_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "suppliers",
+                "{{supplier_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('one supplier', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.id).to.eql(pm.environment.get('supplier_id'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change a supplier",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/suppliers/{{supplier_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "suppliers",
+                "{{supplier_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{supplier_name}} SARL\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('supplier changed', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.name).to.eql(pm.environment.get('supplier_name') + ' SARL');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Deliveries",
+      "item": [
+        {
+          "name": "Record a delivery",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/deliveries",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "deliveries"
+              ]
+            },
+            "description": "Receives 24 units of the product added in \"4. Products\" from the supplier added in \"5. Suppliers\", with 10 dinars paid in cash at once. The product stock grows by 24; the supplier balance grows by 11.600 dinars.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{delivery_id}}\",\n  \"supplier_id\": \"{{supplier_id}}\",\n  \"reference\": \"BL-2041\",\n  \"lines\": [\n    { \"id\": \"{{line_id}}\", \"product_id\": \"{{product_id}}\", \"quantity\": 24, \"unit_price\": 900 }\n  ],\n  \"payment\": { \"id\": \"{{delivery_payment_id}}\", \"amount\": 10000, \"method\": \"cash\" }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('delivery_id', pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.environment.set('line_id', pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.environment.set('delivery_payment_id', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('delivery recorded', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().data.id).to.eql(pm.environment.get('delivery_id'));",
+                  "  pm.expect(pm.response.json().data.total).to.eql(21600);",
+                  "  pm.expect(pm.response.json().data.payment.amount).to.eql(10000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List the deliveries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/deliveries?supplier_id={{supplier_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "deliveries"
+              ],
+              "query": [
+                {
+                  "key": "supplier_id",
+                  "value": "{{supplier_id}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('deliveries of the supplier', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read one delivery",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/deliveries/{{delivery_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "deliveries",
+                "{{delivery_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('one delivery with its lines', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.lines.length).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel a delivery",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/deliveries/{{delivery_id}}/cancellation",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "deliveries",
+                "{{delivery_id}}",
+                "cancellation"
+              ]
+            },
+            "description": "Cancels the whole delivery: its stock is taken back. The cash paid with it still counts until that payment is cancelled.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{cancellation_id}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('cancellation_id', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('delivery cancelled', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().data.cancelled_at).to.not.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Supplier payments",
+      "item": [
+        {
+          "name": "Pay a supplier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/supplier-payments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "supplier-payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{payment_id}}\",\n  \"supplier_id\": \"{{supplier_id}}\",\n  \"amount\": 5000,\n  \"method\": \"transfer\",\n  \"reference\": \"VIR-1\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('payment_id', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('payment recorded', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().data.id).to.eql(pm.environment.get('payment_id'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List the payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/supplier-payments?supplier_id={{supplier_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "supplier-payments"
+              ],
+              "query": [
+                {
+                  "key": "supplier_id",
+                  "value": "{{supplier_id}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('payments to the supplier', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read one payment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/supplier-payments/{{payment_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "supplier-payments",
+                "{{payment_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('one payment', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().data.id).to.eql(pm.environment.get('payment_id'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel a payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/supplier-payments/{{payment_id}}/cancellation",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "supplier-payments",
+                "{{payment_id}}",
+                "cancellation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{cancellation_id}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('cancellation_id', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('payment cancelled', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().data.cancelled_at).to.not.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }
