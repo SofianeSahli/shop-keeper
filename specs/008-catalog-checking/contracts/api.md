@@ -1,6 +1,6 @@
 # API Contract: Catalog Checking
 
-Base path `/api/v1`. JSON only. Operator routes take `Authorization: Bearer <token>` of an account with the operator role and need no shop. The common error shape and the codes of 006 and 007 still apply. The collection `shop-keeper-backend/postman/shop-keeper.postman_collection.json` gains a folder "6. Operator catalog" and must match this file.
+Base path `/api/v1`. JSON only. Every endpoint here is a merchant endpoint: `Authorization: Bearer <token>` of an account with a shop. No endpoint changes the shared catalog: checking and merging are server commands (end of this file). The common error shape and the codes of 006 and 007 still apply. Folder 5 of the collection `shop-keeper-backend/postman/shop-keeper.postman_collection.json` gains the new requests and must match this file.
 
 ## Changed shape (also used by every 007 endpoint)
 
@@ -24,33 +24,13 @@ Base path `/api/v1`. JSON only. Operator routes take `Authorization: Bearer <tok
 - `brand` and `format` may be `null`. `format.unit` is `g`, `kg`, `ml`, `l` or `piece`; `quantity` is a whole number.
 - `merged_into_id` is set only when `status` is `merged`; a merged product has `barcode: null` and `names: null`.
 
-**PendingEntry** (operators only):
-
-```json
-{
-  "catalog_product": { "...": "CatalogProduct, status pending" },
-  "typed_name": "Biscuit du quartier",
-  "typed_language": "fr",
-  "linked_shops_count": 3,
-  "shops": [
-    { "product_name": "Biscuit du quartier", "shop_name": "Epicerie Amira", "city": "Sousse" },
-    { "product_name": "Choco", "shop_name": "Hanout Slim", "city": null }
-  ],
-  "first_added_at": "2026-11-07T10:15:00Z"
-}
-```
-
-`shops` holds at most 20 entries, oldest link first. No owner name, email or phone.
-
-**Brand**: `{ "id": 3, "name": "Délice", "spellings": ["delice", "ديليس"] }`
-
-**ImportResult**: `{ "added": 18, "updated": 0, "unchanged": 2 }`
-
 **ShopProduct** and **ShopProductSummary** (007) gain `removed_at`: `null` while on sale, or the time the merchant removed it, for example `"2026-11-20T08:30:00Z"`.
 
-**ShopProduct** (007) also gains `name_language` (`fr`, `ar` or `en`) and `name_from_catalog` (`true` when the name is the catalog name in `name_language` and cannot be changed by the merchant: added from a checked barcode, linked to a pending product that was then checked, or brought by a merge with its barcode; products a merchant named keep `false`).
+**ShopProduct** (007) also gains:
+- `name_language`: `fr`, `ar` or `en`.
+- `name_from_catalog`: `true` when the name is the catalog name in `name_language` and the merchant cannot change it. That is the case for a product added from a checked barcode, one linked to a pending product that was then checked, or one brought by a merge with its barcode. Products a merchant named keep `false`.
 
-## Shop endpoint (merchant with a shop)
+## Reading a catalog product
 
 | Method and path | Success |
 |-----------------|---------|
@@ -58,7 +38,7 @@ Base path `/api/v1`. JSON only. Operator routes take `Authorization: Bearer <tok
 
 An unknown id answers `catalog_product.not_found` (404). Adding a merged product with `POST /products` and `catalog_product_id` answers `validation.failed` with `catalog_product_id.merged`.
 
-## Removing a product from sale (merchant with a shop)
+## Removing a product from sale
 
 | Method and path | Body | Success |
 |-----------------|------|---------|
@@ -71,7 +51,7 @@ Changes to 007 endpoints:
 - `GET /products` lists products on sale only.
 - `GET /products/suggestions` and close matches (`product.name_close`) leave out removed products that have no catalog link. A catalog product whose shop product is removed is still suggested, with `shop_product.removed_at` set, so the app offers to put it back.
 - `GET /products/{product}` and `GET /catalog/barcodes/{barcode}` still return a removed product, with `removed_at` set.
-- `POST /products` answers `product.removed` with `existing_product_id` when the barcode or catalog product is that of a removed product of the shop, or when the merchant-chosen name matches a removed product's merchant-chosen name once compared.
+- `POST /products` answers `product.removed` with `existing_product_id` in three cases: the barcode or the catalog product is that of a removed product of the shop, or the merchant-chosen name matches a removed product's merchant-chosen name once compared.
 - `PATCH /products/{product}` on a removed product answers `product.removed`.
 
 Another shop's product answers `product.not_found` (404), as in 007.
@@ -86,59 +66,36 @@ Another shop's product answers `product.not_found` (404), as in 007.
 | Same compared name as another product of the shop | `product.name_taken` | only when both names were chosen by merchants |
 | Pending barcode merged into a checked product that had no barcode | | the moved shop products take the catalog name; products already linked keep their merchants' names |
 
-After a check, a correction, a merge or a catalog file or import, linked products with a barcode show the new catalog name in their `name_language`.
-
-## Operator endpoints
-
-| Method and path | Body | Success |
-|-----------------|------|---------|
-| `GET /operator/catalog/pending` | query `cursor`, `per_page` | 200 page of PendingEntry, most linked shops first, then oldest |
-| `POST /operator/catalog/products/{catalog_product}/check` | `key`, `names`; optional `spellings`, `brand_id`, `format` | 200 CatalogProduct, now `verified` |
-| `PATCH /operator/catalog/products/{catalog_product}` | any of `key`, `names`, `spellings`, `brand_id`, `format` | 200 CatalogProduct |
-| `POST /operator/catalog/products/{catalog_product}/merge` | `into_id` | 200 CatalogProduct (the product that stays) |
-| `GET /operator/catalog/brands` | query `cursor`, `per_page` | 200 page of Brand, by name |
-| `POST /operator/catalog/brands` | `name`; optional `spellings` | 201 Brand |
-| `PATCH /operator/catalog/brands/{brand}` | `name` and/or `spellings` | 200 Brand |
-| `POST /operator/catalog/imports` | `csv` (the file's text, at most 1 MB) | 200 ImportResult |
-
-`names` is `{ "fr", "ar", "en" }`; `spellings` is `{ "fr": [], "ar": [], "en": [] }` (each language optional) and replaces the stored spellings; `format` is `{ "quantity", "unit" }` or `null`; `brand_id` may be `null` to remove the brand. The page shape is the 007 cursor page (`data`, `links`, `meta.next_cursor`).
-
-A wrong import line answers:
-
-```json
-{ "error": { "code": "import.invalid_line", "line": 7, "key": "products.x", "reason": "barcode.invalid" } }
-```
-
-## Server commands
-
-| Command | Effect |
-|---------|--------|
-| `php artisan operator:grant {email}` | gives the account the operator role |
-| `php artisan operator:revoke {email}` | removes it |
-| `php artisan catalog:import {file} --operator=<email>` | imports a comma-separated file of any size, with the same rules as `POST /operator/catalog/imports` |
-| `php artisan catalog:load {file?} --operator=<email>` | 007 command; `--operator` is new and optional |
-
-An unknown email or a wrong line exits non-zero and changes nothing; import errors print `line <n> (<key>): <reason>`.
+After a check, a correction or a merge, linked products with a barcode show the new catalog name in their `name_language`.
 
 ## Error codes
 
 | Code | HTTP | Meaning |
 |------|------|---------|
-| `operator.required` | 403 | Signed-in account is not an operator |
 | `catalog_product.not_found` | 404 | Unknown catalog product id |
-| `catalog_product.not_pending` | 409 | Check sent for a product already checked or merged (for example by another operator) |
-| `catalog_product.not_verified` | 409 | Correction sent for a pending product; use check |
-| `catalog_product.merged` | 409 | The product, or the merge target, is merged |
-| `merge.same_product` | 422 | Merging a product into itself |
-| `merge.checked_into_pending` | 409 | Merging a checked product into a pending one |
-| `merge.both_have_barcodes` | 409 | Both products have a barcode; a product holds one at most |
-| `brand.not_found` | 404 | Unknown brand id |
-| `brand.name_taken` | 409 | Another brand has the same compared name |
-| `import.too_large` | 413 | `csv` above 1 MB; use `catalog:import` |
-| `import.invalid_line` | 422 | A line is wrong; has `line`, `key` and `reason` |
 | `product.name_from_catalog` | 409 | Rename of a product whose name comes from the catalog (a checked barcode) |
 | `product.removed` | 409 | The product, or the one the new product would duplicate, is removed from sale; has `existing_product_id`; put it back with `POST /products/{product}/restore` |
 
-New field codes: `key.required`, `key.invalid`, `key.reserved`, `key.taken`, `names.required`, `names.fr.required`, `names.ar.required`, `names.en.required`, `names.<lang>.too_long`, `spellings.invalid`, `spellings.<lang>.too_long`, `brand_id.unknown`, `format.invalid`, `format.quantity.invalid`, `format.unit.invalid`, `into_id.required`, `into_id.unknown`, `name.required`, `name.too_long`, `csv.required`, `catalog_product_id.merged`, `name.prohibited`, `removed.invalid`, `per_page.invalid`.
+New field codes: `catalog_product_id.merged`, `name.prohibited`, `removed.invalid`.
 
-Import reasons (in `reason` and in the command's output): `header.invalid`, `key.invalid`, `key.reserved`, `key.duplicate`, `name.missing`, `name.too_long`, `barcode.invalid`, `barcode.in_store`, `barcode.duplicate`, `barcode.taken`, `barcode.changed`, `key.taken`, `format.invalid`, `brand.too_long`.
+## Server commands (not part of the API)
+
+Run on the server with `docker compose exec app php artisan <command>`. They print no shop name, city or id and no merchant name, email or phone. On any error they print the reason, exit non-zero and change nothing.
+
+| Command | Effect | Prints |
+|---------|--------|--------|
+| `catalog:pending {--limit=50} {--cursor=}` | Lists pending products, most shops first, then oldest. Read only. | One block per product: id, barcode, shop count, first added date, typed name and language, up to 20 different names shops gave (never which shop). Then the command for the next page, or `No product waiting to be checked.` |
+| `catalog:load {file?} {--brands=}` | 007 command. Also loads the brands file first (default `app/Modules/Catalog/database/catalog/brands.json`). Entries may carry `brand` and `format`. An entry with a pending barcode checks that product in place. | `Catalog loaded: <a> added, <u> updated, <n> unchanged; brands: <a> added, <u> updated; <s> shop product names synced.` |
+| `catalog:merge {from} {into} {--yes}` | Merges catalog product `from` into `into`. Without `--yes`, it shows both products and asks for confirmation. | `Merged <from> into <into>: barcode moved, <r> shop products relinked, <u> unlinked, <s> names synced.` |
+
+Refusal messages:
+- `catalog:load`: `Catalog not loaded, nothing changed. entry <n> (<key>): <reason>`. For the brands file, `brand <n> (<key>): <reason>`.
+- The other commands: `Nothing changed. <reason>`.
+
+Reasons:
+
+- `catalog:load`:
+  - 007 reasons: `file.invalid`, `entry.invalid`, `key.invalid`, `key.duplicate`, `key.taken`, `name.missing`, `name.too_long`, `spelling.invalid`, `spelling.missing`, `spelling.too_long`, `barcode.invalid`, `barcode.in_store`, `barcode.duplicate`, `barcode.taken`, `barcode.changed`;
+  - new reasons: `key.reserved`, `key.merged`, `format.invalid`, `brand.unknown`, `brands_file.invalid`, `brand.key.invalid`, `brand.key.duplicate`, `brand.name.missing`, `brand.name.too_long`, `brand.name_taken`, `brand.spelling.too_long`.
+- `catalog:pending`: `limit.invalid`, `cursor.invalid`.
+- `catalog:merge`: `id.invalid`, `catalog_product.not_found`, `merge.same_product`, `catalog_product.merged`, `merge.checked_into_pending`, `merge.both_have_barcodes`, `merge.cancelled`.

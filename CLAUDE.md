@@ -4,12 +4,14 @@ Monorepo for a Tunisian small-shop ecosystem: a management app for small indepen
 
 - `shop-keeper-mobile/` — merchant app (Expo, React Native, TypeScript). Its rules are in `shop-keeper-mobile/CLAUDE.md`; read it before any mobile change.
 - `shop-keeper-backend/` — Laravel 13 REST API. Its rules are in `shop-keeper-backend/CLAUDE.md`; read it before any backend change.
-- `specs/` — Spec Kit features. `001` to `007` are closed. Flow in `.github/skills/`: `speckit-specify` → `clarify` → `plan` → `tasks` → `analyze` → `implement`. Helper scripts are PowerShell (`.specify/scripts/powershell/`).
-- `.specify/memory/constitution.md` — governing rules (version 3.2.0). Read it before any change.
+- `specs/` — Spec Kit features. `001` to `007` are closed, `008` is on hold. Flow in `.github/skills/`: `speckit-specify` → `clarify` → `plan` → `tasks` → `analyze` → `implement`. Helper scripts are PowerShell (`.specify/scripts/powershell/`).
+- `.specify/memory/constitution.md` — governing rules (version 3.3.0). Read it before any change.
 
 ## Current focus
 
-Next: spec 008 — catalog checking, not specified yet. Open question for the owner before `speckit-specify`: who checks `pending` catalog products. Roadmap step 1.3 is split: `007` catalog and shop products, `008` catalog checking, `009` suppliers and deliveries, `010` stock movements and alerts. Then sales `011`, dashboard `012`, connected app and sync `013`, employees `014`, cash shifts `015`, every small business and Play Store `016` to `018`.
+Specs `001` to `007` are closed. `008` (catalog checking) is on hold since 2026-11-19: until an admin interface is designed (through the API or inside the backend, never an app connected straight to the database), pending catalog products are checked by adding them to the catalog file and running `php artisan catalog:load`. There is no operator role; platform and shop roles are designed before spec 014.
+
+Current spec: `009` — suppliers and deliveries (`specs/009-suppliers-deliveries/`). Then `010` stock movements and alerts, `011` sales and customer credit, `012` dashboard, `013` connected app and sync, `014` employees, `015` cash shifts, `016` to `018` every small business and Play Store.
 
 ## Decisions that still bind
 

@@ -104,6 +104,8 @@ Chaque feature passe par [Spec Kit](https://github.com/github/spec-kit) : `speci
 | [`005-dark-mode`](specs/005-dark-mode/spec.md) | Thème clair et sombre | Clôturée |
 | [`006-auth-shop`](specs/006-auth-shop/spec.md) | Comptes (Google ou e-mail et mot de passe), vérification en deux étapes par code envoyé par e-mail, magasin du commerçant (backend seul, testable avec Postman) | Clôturée |
 | [`007-catalog-products`](specs/007-catalog-products/spec.md) | Catalogue commun (avec et sans code-barres, noms traduits), produits du magasin et leurs prix, ajout par code-barres ou par nom, doublons bloqués (backend seul) | Clôturée |
+| [`008-catalog-checking`](specs/008-catalog-checking/spec.md) | Vérification des produits du catalogue en attente, fusions, marques et formats ; en attendant, les produits en attente sont vérifiés par le fichier du catalogue et `php artisan catalog:load` | En pause |
+| [`009-suppliers-deliveries`](specs/009-suppliers-deliveries/spec.md) | Fournisseurs du magasin et réceptions de marchandise : entrée en stock et prix d'achat (backend seul) | En cours |
 
 Chaque dossier `specs/NNN-*/` contient `spec.md` (le quoi), `plan.md` (le comment), `tasks.md` (les étapes), `data-model.md`, `research.md`, `quickstart.md` et `contracts/`.
 
@@ -128,7 +130,7 @@ shop-keeper/
 - [x] Pilote APK et pivot vers la caisse de gestion
 - [x] 006 — Authentification et magasin (backend)
 - [x] 007 — Catalogue commun et produits du magasin
-- [ ] 008 — Vérification du catalogue
+- [ ] 008 — Vérification du catalogue (reportée)
 - [ ] 009 — Fournisseurs et réceptions
 - [ ] 010 — Mouvements de stock et alertes de rupture
 - [ ] 011 — Ventes

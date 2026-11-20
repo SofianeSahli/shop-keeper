@@ -33,4 +33,5 @@
 
 - "Who checks pending products" was settled by the owner on 2026-11-13 (operator review queue) before the spec was written, so no clarification marker was needed for it.
 - The clarify session of 2026-11-16 settled the open choices (spec "Clarifications"): one barcode per catalog product, the merge rule for a shop linked to both products, import by both server command and API, the shop's name and city shown in the queue, and whole-quantity formats in five units.
-- Like 006 and 007, the spec names the API, a server command and an API testing tool, because the feature has no screen; these describe how it is used, not how it is built.
+- On 2026-11-19 the owner removed the operator role and every admin endpoint: checking is done on the server, the queue and merges by commands, checks, corrections, brands and formats through the catalog files and `catalog:load`. This superseded the import and the shop name and city of 2026-11-16 (spec "Clarifications", Session 2026-11-19). Requirements, stories and tasks were renumbered.
+- Like 006 and 007, the spec names the API, server commands, the catalog files and an API testing tool, because the feature has no screen; these describe how it is used, not how it is built.
