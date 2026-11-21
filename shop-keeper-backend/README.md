@@ -70,13 +70,15 @@ Le code est découpé par domaine métier. Chaque module contient ses modèles, 
 
 ```
 app/
-├── Shared/          # format d'erreur, exigence de JSON
+├── Shared/          # format d'erreur, exigence de JSON, jour du magasin, ids repris et annulations
 └── Modules/
     ├── Identity/    # comptes, appareils, Google, e-mail, code par e-mail (006)
     ├── Shops/       # magasins                                          (006)
     ├── Catalog/     # global_products (catalogue commun), shop_products  (007, 008)
-    ├── Inventory/   # fournisseurs, réceptions, mouvements de stock     (009, 010)
-    ├── Sales/       # ventes, lignes, paiements                         (011)
+    ├── Contacts/    # carnet de contacts, fournisseurs et clients       (009)
+    ├── Transactions/ # achats, puis ventes, lignes, annulations         (009, 011)
+    ├── Payments/    # paiements enregistrés, soldes des contacts        (009)
+    ├── Inventory/   # mouvements de stock                               (009, 010)
     ├── Credit/      # clients, crédit client                            (011)
     ├── Reporting/   # dashboard                                         (012)
     └── Sync/        # envoi et récupération des opérations              (013)

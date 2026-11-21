@@ -28,13 +28,6 @@ class ShopProduct extends Model
         $query->where('shop_id', $shopId);
     }
 
-    public function uuid(): string
-    {
-        $keyName = $this->getKeyName();
-
-        return $this->getAttribute($keyName);
-    }
-
     protected static function booted(): void
     {
         static::saving(function (ShopProduct $product): void {
@@ -48,6 +41,7 @@ class ShopProduct extends Model
         return [
             'sale_price' => 'integer',
             'purchase_price' => 'integer',
+            'stock_quantity' => 'integer',
         ];
     }
 

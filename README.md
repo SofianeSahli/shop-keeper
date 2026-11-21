@@ -128,8 +128,8 @@ shop-keeper/
 - [x] Pilote APK et pivot vers la caisse de gestion
 - [x] 006 — Authentification et magasin (backend)
 - [x] 007 — Catalogue commun et produits du magasin
-- [ ] 008 — Vérification du catalogue
-- [ ] 009 — Fournisseurs et réceptions
+- [ ] 008 — Vérification du catalogue (en pause)
+- [ ] 009 — Contacts, achats et paiements
 - [ ] 010 — Mouvements de stock et alertes de rupture
 - [ ] 011 — Ventes
 - [ ] 012 — Dashboard

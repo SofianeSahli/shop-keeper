@@ -8,4 +8,6 @@ return [
     )),
 
     'auth_test_mode' => (bool) env('AUTH_TEST_MODE', false),
+
+    'shop_time_zone' => env('SHOP_TIME_ZONE', 'Africa/Tunis'),
 ];

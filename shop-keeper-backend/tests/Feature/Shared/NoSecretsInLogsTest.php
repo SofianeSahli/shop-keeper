@@ -134,3 +134,48 @@ it('keeps product names and tokens out of the log of a product journey', functio
         expect($log)->not->toContain($secret);
     }
 });
+
+it('keeps contact names, phones, addresses and notes out of the log of a purchase journey', function () {
+    $logged = [];
+    Event::listen(MessageLogged::class, function (MessageLogged $event) use (&$logged) {
+        $logged[] = $event->message.' '.json_encode($event->context, JSON_PARTIAL_OUTPUT_ON_ERROR);
+    });
+    ['shop' => $shop, 'token' => $token] = CatalogScenario::merchantWithShop();
+    $product = CatalogScenario::shopProduct($shop);
+    $productId = $product->uuid();
+    $contactId = (string) Str::uuid7();
+    $contactName = 'Grossiste journey secret';
+    $contactPhone = '+21655443322';
+    $contactAddress = 'Rue journey secret, Sfax';
+    $contactNote = 'Journey secret note';
+    $contact = ['id' => $contactId, 'name' => $contactName, 'phone' => $contactPhone, 'address' => $contactAddress, 'note' => $contactNote];
+    $duplicateId = (string) Str::uuid7();
+    $duplicate = [...$contact, 'id' => $duplicateId];
+    $purchaseId = (string) Str::uuid7();
+    $lineId = (string) Str::uuid7();
+    $purchase = [
+        'id' => $purchaseId,
+        'kind' => 'purchase',
+        'contact_id' => $contactId,
+        'lines' => [['id' => $lineId, 'product_id' => $productId, 'quantity' => 2, 'unit_price' => 1500]],
+    ];
+    $paymentId = (string) Str::uuid7();
+    $payment = ['id' => $paymentId, 'direction' => 'paid', 'transaction_id' => $purchaseId, 'amount' => 5000, 'method' => 'cash'];
+    $cancellationId = (string) Str::uuid7();
+    $cancellation = ['id' => $cancellationId, 'reason' => $contactNote];
+
+    $this->withToken($token)->postJson('/api/v1/contacts', $contact)->assertCreated();
+    $this->withToken($token)->postJson('/api/v1/contacts', $duplicate)->assertStatus(409);
+    $this->withToken($token)->patchJson("/api/v1/contacts/{$contactId}", ['phone' => 'not a phone'])->assertStatus(422);
+    $this->withToken($token)->getJson('/api/v1/contacts')->assertOk();
+    $this->withToken($token)->postJson('/api/v1/transactions', $purchase)->assertCreated();
+    $this->withToken($token)->postJson('/api/v1/payments', $payment)->assertStatus(422);
+    $this->withToken($token)->postJson("/api/v1/transactions/{$purchaseId}/cancellation", $cancellation)->assertCreated();
+    $this->withToken($token)->getJson('/api/v1/payments')->assertOk();
+
+    $log = implode("\n", $logged);
+
+    foreach ([$contactName, $contactPhone, $contactAddress, $contactNote, $token] as $secret) {
+        expect($log)->not->toContain($secret);
+    }
+});
