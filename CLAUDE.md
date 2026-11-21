@@ -9,7 +9,7 @@ Monorepo for a Tunisian small-shop ecosystem: a management app for small indepen
 
 ## Current focus
 
-Next: spec 008 — catalog checking, not specified yet. Open question for the owner before `speckit-specify`: who checks `pending` catalog products. Roadmap step 1.3 is split: `007` catalog and shop products, `008` catalog checking, `009` suppliers and deliveries, `010` stock movements and alerts. Then sales `011`, dashboard `012`, connected app and sync `013`, employees `014`, cash shifts `015`, every small business and Play Store `016` to `018`.
+Current: spec 009 — contacts, transactions and payments for purchases (`specs/009-suppliers-deliveries/`, reworked by the owner on 2026-11-21), backend only. Three modules: Contacts (address book, supplier and customer roles), Transactions (one model for purchases now and sales in 011), Payments (money recorded only, per contact and optionally linked to one transaction; a transaction may have many payments). Implemented on the branch (tasks T001 to T042); the first 009 code (module `Purchasing`) is removed. Spec 008 (catalog checking) is on hold: pending products are checked through the catalog file and `catalog:load`. Later specs: `010` stock movements and alerts, `011` sales and customer credit (adds the sale kind), `012` dashboard, `013` connected app and sync, `014` employees, `015` cash shifts, `016` to `018` every small business and Play Store.
 
 ## Decisions that still bind
 

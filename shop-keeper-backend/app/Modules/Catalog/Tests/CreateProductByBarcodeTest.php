@@ -29,6 +29,7 @@ it('adds a checked catalog product with the catalog name in the language sent', 
         'name' => 'طماطم',
         'sale_price' => CatalogScenario::SALE_PRICE,
         'purchase_price' => 1200,
+        'stock_quantity' => 0,
         'catalog_product' => [
             'id' => $tomatoes->id,
             'key' => 'products.tomato',
