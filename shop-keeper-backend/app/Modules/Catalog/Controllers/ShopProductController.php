@@ -3,6 +3,7 @@
 namespace App\Modules\Catalog\Controllers;
 
 use App\Modules\Catalog\Actions\CreateShopProduct;
+use App\Modules\Catalog\Actions\ListLowStockProducts;
 use App\Modules\Catalog\Actions\UpdateShopProduct;
 use App\Modules\Catalog\Controllers\Requests\CreateShopProductRequest;
 use App\Modules\Catalog\Controllers\Requests\ListProductsRequest;
@@ -28,6 +29,17 @@ final class ShopProductController
             ->orderBy('identity_key')
             ->cursorPaginate($pageSize)
             ->withQueryString();
+
+        return ShopProductResource::collection($products);
+    }
+
+    public function lowStock(
+        ListProductsRequest $request,
+        CurrentShop $currentShop,
+        ListLowStockProducts $listLowStockProducts,
+    ): AnonymousResourceCollection {
+        $pageSize = $request->pageSize();
+        $products = $listLowStockProducts->handle($currentShop->shopId, $pageSize);
 
         return ShopProductResource::collection($products);
     }

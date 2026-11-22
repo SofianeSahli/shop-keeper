@@ -10,7 +10,7 @@ use Illuminate\Validation\Validator;
 
 final class UpdateShopProductRequest extends FormRequest
 {
-    private const CHANGEABLE_FIELDS = ['name', 'sale_price', 'purchase_price'];
+    private const CHANGEABLE_FIELDS = ['name', 'sale_price', 'purchase_price', 'low_stock_level'];
 
     public function rules(): array
     {
@@ -18,6 +18,7 @@ final class UpdateShopProductRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:'.ShopProduct::NAME_MAX_LENGTH],
             'sale_price' => ['sometimes', ...PriceInMillimes::rules(required: true)],
             'purchase_price' => ['sometimes', ...PriceInMillimes::rules(required: false)],
+            'low_stock_level' => ['sometimes', 'nullable', 'integer:strict', 'min:0', 'max:'.ShopProduct::MAX_LOW_STOCK_LEVEL],
             'confirm_different' => ['sometimes', 'boolean'],
             'id' => ['prohibited'],
             'barcode' => ['prohibited'],
@@ -31,6 +32,9 @@ final class UpdateShopProductRequest extends FormRequest
             'name.required' => 'name.required',
             'name.string' => 'name.invalid',
             'name.max' => 'name.too_long',
+            'low_stock_level.integer' => 'low_stock_level.integer',
+            'low_stock_level.min' => 'low_stock_level.negative',
+            'low_stock_level.max' => 'low_stock_level.too_high',
             'confirm_different.boolean' => 'confirm_different.boolean',
             'id.prohibited' => 'id.prohibited',
             'barcode.prohibited' => 'barcode.prohibited',
@@ -56,6 +60,8 @@ final class UpdateShopProductRequest extends FormRequest
         $changesPurchasePrice = $this->has('purchase_price');
         $purchasePrice = $this->validated('purchase_price');
         $confirmedDifferent = $this->boolean('confirm_different');
+        $changesLowStockLevel = $this->has('low_stock_level');
+        $lowStockLevel = $this->validated('low_stock_level');
 
         return new ShopProductChanges(
             name: $name,
@@ -63,6 +69,8 @@ final class UpdateShopProductRequest extends FormRequest
             changesPurchasePrice: $changesPurchasePrice,
             purchasePrice: $purchasePrice,
             confirmedDifferent: $confirmedDifferent,
+            changesLowStockLevel: $changesLowStockLevel,
+            lowStockLevel: $lowStockLevel,
         );
     }
 }

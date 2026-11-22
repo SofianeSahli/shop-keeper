@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-19 · **Reworked**: 2026-11-21
 
-**Status**: Draft (reworked; the 2026-11-20 version with a single Purchasing module is replaced)
+**Status**: Closed on 2026-11-21 (merged)
 
 **Input**: User description: "Second part of roadmap step 1.3. A merchant keeps an address book of contacts, records the goods they buy as transactions that bring stock in, and records the money paid. Transactions are one module for purchases and, later, sales. Payments are only recorded, never processed. Backend only, like 006 and 007."
 

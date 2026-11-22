@@ -19,6 +19,7 @@ class StockMovement extends Model
             'source_id' => BinaryUuid::class,
             'kind' => StockMovementKind::class,
             'quantity' => 'integer',
+            'sequence' => 'integer',
         ];
     }
 }

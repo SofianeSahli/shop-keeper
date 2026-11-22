@@ -11,12 +11,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['id', 'shop_id', 'global_product_id', 'name', 'sale_price', 'purchase_price'])]
+#[Fillable(['id', 'shop_id', 'global_product_id', 'name', 'sale_price', 'purchase_price', 'low_stock_level'])]
 class ShopProduct extends Model
 {
     use HasBinaryUuidKey, HasFactory;
 
     public const NAME_MAX_LENGTH = 120;
+
+    public const MAX_LOW_STOCK_LEVEL = 999_999;
 
     public function globalProduct(): BelongsTo
     {
@@ -42,6 +44,7 @@ class ShopProduct extends Model
             'sale_price' => 'integer',
             'purchase_price' => 'integer',
             'stock_quantity' => 'integer',
+            'low_stock_level' => 'integer',
         ];
     }
 

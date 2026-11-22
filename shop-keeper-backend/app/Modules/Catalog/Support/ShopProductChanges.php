@@ -10,5 +10,7 @@ final readonly class ShopProductChanges
         public bool $changesPurchasePrice,
         public ?int $purchasePrice,
         public bool $confirmedDifferent,
+        public bool $changesLowStockLevel = false,
+        public ?int $lowStockLevel = null,
     ) {}
 }

@@ -902,7 +902,7 @@
           ]
         },
         {
-          "name": "Change the prices",
+          "name": "Change the prices and low-stock level",
           "request": {
             "method": "PATCH",
             "header": [
@@ -925,8 +925,9 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sale_price\": 1900,\n  \"purchase_price\": 1300\n}"
-            }
+              "raw": "{\n  \"sale_price\": 1900,\n  \"purchase_price\": 1300,\n  \"low_stock_level\": 25\n}"
+            },
+            "description": "Changes the prices and sets the low-stock level to 25 (\"8. Stock\" lists the product once its stock is 25 or less). Send \"low_stock_level\": null to remove the level. No stock movement is recorded."
           },
           "event": [
             {
@@ -934,10 +935,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('new prices saved', () => {",
+                  "pm.test('new prices and low-stock level saved', () => {",
                   "  pm.response.to.have.status(200);",
                   "  pm.expect(pm.response.json().data.sale_price).to.eql(1900);",
                   "  pm.expect(pm.response.json().data.purchase_price).to.eql(1300);",
+                  "  pm.expect(pm.response.json().data.low_stock_level).to.eql(25);",
                   "});"
                 ]
               }
@@ -1482,6 +1484,262 @@
                   "pm.test('purchase cancelled and its stock taken back', () => {",
                   "  pm.response.to.have.status(201);",
                   "  pm.expect(pm.response.json().data.cancellation.reason).to.eql('wrong supplier');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Stock",
+      "description": "Run after \"7. Payments\": the product of \"4. Products\" has a stock of 0 once its purchase is cancelled. The opening stock is accepted once per product; sent again with new ids it answers 422 product_id.opening_already_set.",
+      "item": [
+        {
+          "name": "Set the opening stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stock/openings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "stock",
+                "openings"
+              ]
+            },
+            "description": "Opening stock of 30 for the product. New adjustment_id and adjustment_line_id are generated before the request. The stock grows by 30.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{adjustment_id}}\",\n  \"lines\": [\n    {\n      \"id\": \"{{adjustment_line_id}}\",\n      \"product_id\": \"{{product_id}}\",\n      \"quantity\": 30\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('adjustment_id', pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.environment.set('adjustment_line_id', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('opening stock recorded', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().data.kind).to.eql('opening_stock');",
+                  "  pm.expect(pm.response.json().data.lines[0].quantity).to.eql(30);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Record a loss",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stock/losses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "stock",
+                "losses"
+              ]
+            },
+            "description": "Two units broken. The stock goes down by 2, to 28. A loss may take the stock below zero.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{adjustment_id}}\",\n  \"lines\": [\n    {\n      \"id\": \"{{adjustment_line_id}}\",\n      \"product_id\": \"{{product_id}}\",\n      \"quantity\": 2,\n      \"reason\": \"broken\",\n      \"note\": \"fell from the shelf\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('adjustment_id', pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.environment.set('adjustment_line_id', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('loss recorded', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().data.kind).to.eql('loss');",
+                  "  pm.expect(pm.response.json().data.lines[0].quantity).to.eql(-2);",
+                  "  pm.expect(pm.response.json().data.lines[0].reason).to.eql('broken');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Record a count",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stock/counts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "stock",
+                "counts"
+              ]
+            },
+            "description": "The merchant counts 25 units while the app shows 28. The server records counted minus shown (-3), so movements recorded since the count still count. The stock becomes 25.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{adjustment_id}}\",\n  \"lines\": [\n    {\n      \"id\": \"{{adjustment_line_id}}\",\n      \"product_id\": \"{{product_id}}\",\n      \"counted_quantity\": 25,\n      \"shown_quantity\": 28\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('adjustment_id', pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.environment.set('adjustment_line_id', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('count recorded', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().data.kind).to.eql('count');",
+                  "  pm.expect(pm.response.json().data.lines[0].quantity).to.eql(-3);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read the stock history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/products/{{product_id}}/stock-movements?per_page=50",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "{{product_id}}",
+                "stock-movements"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Every stock movement of the product, newest first, with the stock right after each one. Pass meta.next_cursor back as cursor for the next page."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('history newest first', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const movements = pm.response.json().data;",
+                  "  pm.expect(movements[0].kind).to.eql('count');",
+                  "  pm.expect(movements[0].stock_after).to.eql(25);",
+                  "  pm.expect(movements[1].kind).to.eql('loss');",
+                  "  pm.expect(movements[1].stock_after).to.eql(28);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List low-stock products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/products/low-stock?per_page=50",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "low-stock"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Products whose stock is at or below their low-stock level, lowest stock first. The product has a level of 25 (set in \"4. Products\") and a stock of 25, so it is listed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('product listed as low on stock', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const listed = pm.response.json().data.find((product) => product.id === pm.environment.get('product_id'));",
+                  "  pm.expect(listed.stock_quantity).to.eql(25);",
+                  "  pm.expect(listed.low_stock_level).to.eql(25);",
                   "});"
                 ]
               }

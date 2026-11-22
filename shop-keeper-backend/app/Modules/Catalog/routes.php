@@ -15,6 +15,7 @@ Route::middleware(['auth:sanctum', RequireShop::ALIAS])->group(function () {
 
     Route::get('products', [ShopProductController::class, 'index']);
     Route::post('products', [ShopProductController::class, 'store']);
+    Route::get('products/low-stock', [ShopProductController::class, 'lowStock']);
     Route::get('products/{product}', [ShopProductController::class, 'show']);
     Route::patch('products/{product}', [ShopProductController::class, 'update']);
 });

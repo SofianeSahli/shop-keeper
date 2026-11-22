@@ -19,6 +19,7 @@ it('reads one product of the shop', function () {
             'sale_price' => 1800,
             'purchase_price' => 1100,
             'stock_quantity' => 0,
+            'low_stock_level' => null,
             'catalog_product' => [
                 'id' => $tomatoes->id,
                 'key' => 'products.tomato',
