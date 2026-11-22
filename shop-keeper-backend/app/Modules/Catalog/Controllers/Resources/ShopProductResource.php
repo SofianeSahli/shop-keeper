@@ -15,6 +15,7 @@ final class ShopProductResource extends JsonResource
             'sale_price' => $this->sale_price,
             'purchase_price' => $this->purchase_price,
             'stock_quantity' => $this->stock_quantity ?? 0,
+            'low_stock_level' => $this->low_stock_level,
             'catalog_product' => $this->globalProduct === null ? null : new CatalogProductResource($this->globalProduct),
             'created_at' => $this->created_at->toIso8601ZuluString(),
             'updated_at' => $this->updated_at->toIso8601ZuluString(),

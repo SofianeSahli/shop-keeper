@@ -2,6 +2,7 @@
 
 namespace App\Modules\Inventory;
 
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 final class InventoryServiceProvider extends ServiceProvider
@@ -9,5 +10,7 @@ final class InventoryServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
+
+        Route::middleware('api')->prefix('api/v1')->group(__DIR__.'/routes.php');
     }
 }

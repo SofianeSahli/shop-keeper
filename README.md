@@ -104,6 +104,8 @@ Chaque feature passe par [Spec Kit](https://github.com/github/spec-kit) : `speci
 | [`005-dark-mode`](specs/005-dark-mode/spec.md) | Thème clair et sombre | Clôturée |
 | [`006-auth-shop`](specs/006-auth-shop/spec.md) | Comptes (Google ou e-mail et mot de passe), vérification en deux étapes par code envoyé par e-mail, magasin du commerçant (backend seul, testable avec Postman) | Clôturée |
 | [`007-catalog-products`](specs/007-catalog-products/spec.md) | Catalogue commun (avec et sans code-barres, noms traduits), produits du magasin et leurs prix, ajout par code-barres ou par nom, doublons bloqués (backend seul) | Clôturée |
+| [`009-suppliers-deliveries`](specs/009-suppliers-deliveries/spec.md) | Carnet de contacts (fournisseurs et clients), achats qui font entrer le stock, paiements enregistrés et soldes par contact (backend seul) | Clôturée |
+| [`010-stock-movements`](specs/010-stock-movements/spec.md) | Stock de départ, corrections après comptage, pertes, historique du stock et alertes de stock bas (backend seul) | En cours |
 
 Chaque dossier `specs/NNN-*/` contient `spec.md` (le quoi), `plan.md` (le comment), `tasks.md` (les étapes), `data-model.md`, `research.md`, `quickstart.md` et `contracts/`.
 
@@ -129,8 +131,8 @@ shop-keeper/
 - [x] 006 — Authentification et magasin (backend)
 - [x] 007 — Catalogue commun et produits du magasin
 - [ ] 008 — Vérification du catalogue (en pause)
-- [ ] 009 — Contacts, achats et paiements
-- [ ] 010 — Mouvements de stock et alertes de rupture
+- [x] 009 — Contacts, achats et paiements
+- [ ] 010 — Mouvements de stock et alertes de rupture (en cours)
 - [ ] 011 — Ventes
 - [ ] 012 — Dashboard
 - [ ] 013 — App connectée et synchronisation

@@ -31,6 +31,10 @@ final class UpdateShopProduct
                 $locked->purchase_price = $changes->purchasePrice;
             }
 
+            if ($changes->changesLowStockLevel) {
+                $locked->low_stock_level = $changes->lowStockLevel;
+            }
+
             $this->save($locked);
 
             return $locked;

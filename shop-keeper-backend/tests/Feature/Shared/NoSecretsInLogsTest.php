@@ -179,3 +179,32 @@ it('keeps contact names, phones, addresses and notes out of the log of a purchas
         expect($log)->not->toContain($secret);
     }
 });
+
+it('keeps loss notes and tokens out of the log of a stock journey', function () {
+    $logged = [];
+    Event::listen(MessageLogged::class, function (MessageLogged $event) use (&$logged) {
+        $logged[] = $event->message.' '.json_encode($event->context, JSON_PARTIAL_OUTPUT_ON_ERROR);
+    });
+    ['shop' => $shop, 'token' => $token] = CatalogScenario::merchantWithShop();
+    $product = CatalogScenario::shopProduct($shop);
+    $productId = $product->uuid();
+    $lossNote = 'Journey secret loss note';
+    $lossId = (string) Str::uuid7();
+    $lossLineId = (string) Str::uuid7();
+    $loss = [
+        'id' => $lossId,
+        'lines' => [['id' => $lossLineId, 'product_id' => $productId, 'quantity' => 2, 'reason' => 'stolen', 'note' => $lossNote]],
+    ];
+    $wrongReason = [...$loss, 'id' => (string) Str::uuid7()];
+    $wrongReason['lines'][0] = [...$wrongReason['lines'][0], 'id' => (string) Str::uuid7(), 'reason' => 'lost'];
+
+    $this->withToken($token)->postJson('/api/v1/stock/losses', $loss)->assertCreated();
+    $this->withToken($token)->postJson('/api/v1/stock/losses', $wrongReason)->assertStatus(422);
+    $this->withToken($token)->getJson("/api/v1/products/{$productId}/stock-movements")->assertOk();
+
+    $log = implode("\n", $logged);
+
+    foreach ([$lossNote, $token] as $secret) {
+        expect($log)->not->toContain($secret);
+    }
+});
